@@ -8,6 +8,7 @@ from database import get_connection
 from schemas import UploadResponse
 from dotenv import load_dotenv
 from services.r2 import upload_bytes
+from scheduler import schedule_deletion
 
 load_dotenv()
 
@@ -47,5 +48,7 @@ async def upload_file(file: UploadFile = File(...)):
     )
     conn.commit()
     conn.close()
+    
+    schedule_deletion(file_id, expires_at)
 
     return UploadResponse(id=file_id, expires_at=expires_at)
