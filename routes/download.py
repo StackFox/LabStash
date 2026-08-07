@@ -10,7 +10,7 @@ from services.r2 import download_bytes, object_exists, delete_object
 router = APIRouter()
 
 
-@router.get("/download/{file_id}")
+@router.get("/api/download/{file_id}")
 async def download_file(file_id: str):
     conn = get_connection()
     row = conn.execute(

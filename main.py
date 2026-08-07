@@ -17,7 +17,10 @@ async def lifespan(app: FastAPI):
     reconcile_pending_deletions()
     yield
 
-app = FastAPI(title="LabStash API", lifespan=lifespan)
+app = FastAPI(
+    title="LabStash API", 
+    lifespan=lifespan
+)
 
 app.add_middleware(
     CORSMiddleware,

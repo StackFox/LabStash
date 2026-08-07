@@ -21,7 +21,7 @@ MAX_FILE_SIZE = 200 * 1024 * 1024  # 200 MB cap
 DEFAULT_EXPIRY_SECONDS = 15 * 60 # 15 minutes
 
 
-@router.post("/upload", response_model=UploadResponse)
+@router.post("/api/upload", response_model=UploadResponse)
 async def upload_file(file: UploadFile = File(...)):
     contents = await file.read()
 

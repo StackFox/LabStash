@@ -2,7 +2,7 @@ import asyncio
 import time
 
 from database import get_connection
-from services.r2 import (delete_object)
+from services.r2 import delete_object
 
 _pending_tasks: dict[str, asyncio.Task] = {}
 
