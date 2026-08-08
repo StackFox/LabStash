@@ -16,6 +16,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS files (
             id TEXT PRIMARY KEY,
             storage_path TEXT NOT NULL,
+            original_filename TEXT NOT NULL,
             size_bytes INTEGER NOT NULL,
             created_at INTEGER NOT NULL,
             expires_at INTEGER NOT NULL,

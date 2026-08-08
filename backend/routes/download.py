@@ -38,12 +38,13 @@ async def download_file(file_id: str):
         "UPDATE files SET downloaded = 1 WHERE id = ?", (file_id,)
     )
     conn.commit()
+    original_filename = row["original_filename"]
     conn.close()
 
     return Response(
         content=contents,
         media_type="application/octet-stream",
-        headers={"Content-Disposition": f'attachment; filename="{file_id}.enc"'},
+        headers={"Content-Disposition": f'attachment; filename="{original_filename}"'},
     )
 
 def _delete_file_record(conn, row):
