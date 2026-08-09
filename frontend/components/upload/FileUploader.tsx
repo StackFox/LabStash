@@ -7,6 +7,7 @@ import { useState } from "react";
 const FileUploader = () => {
     const [file, setFile] = useState<File | null>(null);
     const [fileId, setFileId] = useState<string | null>(null);
+    const [shortCode, setShortCode] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
 
     const handleUpload = async () => {
@@ -15,8 +16,9 @@ const FileUploader = () => {
         setLoading(true)
 
         try {
-            const result = await uploadFile(file)
-            setFileId(result.id);
+            const { id, short_code, expires_at } = await uploadFile(file)
+            setFileId(id);
+            setShortCode(short_code);
         } catch (error) {
             console.error(error)
         } finally {
@@ -38,12 +40,15 @@ const FileUploader = () => {
             </button>
 
             {fileId && (
-                <p>
-                    Access URL:{' '}
-                    <Link href={`/download/${fileId}`}>
-                        {`${process.env.NEXT_PUBLIC_HOST_URL}/download/${fileId}`}
-                    </Link>
-                </p>
+                <div>
+                    <p>
+                        Access URL:{' '}
+                        <Link href={`/download/${fileId}`}>
+                            {`${process.env.NEXT_PUBLIC_HOST_URL}/download/${shortCode}`}
+                        </Link>
+                    </p>
+                    <h1 className="bold">{`${shortCode}`}</h1>
+                </div>
             )}
         </div>
     )

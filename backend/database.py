@@ -15,6 +15,7 @@ def init_db():
     conn.execute("""
         CREATE TABLE IF NOT EXISTS files (
             id TEXT PRIMARY KEY,
+            short_code TEXT UNIQUE NOT NULL,
             storage_path TEXT NOT NULL,
             original_filename TEXT NOT NULL,
             size_bytes INTEGER NOT NULL,
@@ -25,6 +26,9 @@ def init_db():
     """)
     conn.execute("""
         CREATE INDEX IF NOT EXISTS idx_expires_at ON files(expires_at)
+    """)
+    conn.execute("""
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_short_code ON files(short_code)
     """)
     conn.commit()
     conn.close()

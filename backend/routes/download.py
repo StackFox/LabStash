@@ -1,5 +1,5 @@
-import os
 import time
+import re
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
@@ -9,13 +9,36 @@ from services.r2 import download_bytes, object_exists, delete_object
 
 router = APIRouter()
 
+_attempt_counts: dict[str, list[float]] = {}
+MAX_ATTEMPTS = 10
+WINDOW_SECONDS = 60
 
-@router.get("/api/download/{file_id}")
-async def download_file(file_id: str):
+UUID_PATTERN = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.IGNORECASE)
+
+def _check_rate_limit(code: str):
+    now = time.time()
+    attempts = _attempt_counts.setdefault(code, [])
+    attempts[:] = [t for t in attempts if now - t < WINDOW_SECONDS]
+    if len(attempts) >= MAX_ATTEMPTS:
+        raise HTTPException(
+            status_code=429, detail="Too many attempts, try again later"
+        )
+    attempts.append(now)
+
+
+@router.get("/api/download/{identifier}")
+async def download_file(identifier: str):
+    
     conn = get_connection()
-    row = conn.execute(
-        "SELECT * FROM files WHERE id = ?", (file_id,)
-    ).fetchone()
+    # file id
+    if UUID_PATTERN.match(identifier):
+        row = conn.execute("SELECT * FROM files WHERE id = ?", (identifier,)).fetchone()
+    # short code
+    else:
+        short_code = identifier.strip().upper()
+        _check_rate_limit(short_code)
+        row = conn.execute("SELECT * FROM files WHERE short_code = ?", (short_code,)).fetchone()
+        
 
     if row is None:
         conn.close()
@@ -34,9 +57,7 @@ async def download_file(file_id: str):
 
     contents = download_bytes(object_key)
 
-    conn.execute(
-        "UPDATE files SET downloaded = 1 WHERE id = ?", (file_id,)
-    )
+    conn.execute("UPDATE files SET downloaded = 1 WHERE id = ?", (identifier,))
     conn.commit()
     original_filename = row["original_filename"]
     conn.close()
@@ -46,6 +67,7 @@ async def download_file(file_id: str):
         media_type="application/octet-stream",
         headers={"Content-Disposition": f'attachment; filename="{original_filename}"'},
     )
+
 
 def _delete_file_record(conn, row):
     delete_object(row["storage_path"])
