@@ -33,11 +33,13 @@ async def download_file(identifier: str):
     # file id
     if UUID_PATTERN.match(identifier):
         row = conn.execute("SELECT * FROM files WHERE id = ?", (identifier,)).fetchone()
+        conn.execute("UPDATE files SET downloaded = downloaded + 1 WHERE id = ?", (identifier,))
     # short code
     else:
         short_code = identifier.strip().upper()
         _check_rate_limit(short_code)
         row = conn.execute("SELECT * FROM files WHERE short_code = ?", (short_code,)).fetchone()
+        conn.execute("UPDATE files SET downloaded = downloaded + 1 WHERE short_code = ?", (identifier,))
         
 
     if row is None:
@@ -57,7 +59,6 @@ async def download_file(identifier: str):
 
     contents = download_bytes(object_key)
 
-    conn.execute("UPDATE files SET downloaded = 1 WHERE id = ?", (identifier,))
     conn.commit()
     original_filename = row["original_filename"]
     conn.close()

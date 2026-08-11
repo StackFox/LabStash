@@ -139,6 +139,8 @@ button { cursor: pointer; }
 .upload-title { margin: 0 0 7px; color: #fff; font-size: 15px; font-weight: 600; }
 .upload-subtitle { margin: 0 0 22px; color: var(--color-mute); font-size: 13px; }
 .status-icon { color: var(--color-primary); font-size: 48px; margin-bottom: 16px; }
+.expiry-note { display: inline-flex; align-items: center; gap: 8px; margin: 4px 0 22px; padding: 8px 12px; border: 1px solid var(--color-hairline); border-radius: 999px; color: var(--color-body); background: var(--color-canvas); font-size: 12px; }
+.expiry-note strong { color: var(--color-primary); font-family: var(--font-mono); font-size: 13px; letter-spacing: .04em; }
 .short-code { margin: 18px 0 24px; color: var(--color-primary); font-family: var(--font-mono); font-size: 38px; letter-spacing: .08em; }
 .share-row { display: flex; align-items: center; gap: 8px; margin: 0 0 24px; padding: 10px 12px; border: 1px solid var(--color-hairline); border-radius: 10px; background: var(--color-canvas); }
 .share-row code { min-width: 0; flex: 1; overflow: auto; color: var(--color-body); font-family: var(--font-mono); font-size: 12px; white-space: nowrap; }

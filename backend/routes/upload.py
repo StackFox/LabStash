@@ -15,8 +15,8 @@ load_dotenv()
 
 router = APIRouter()
 
-MAX_FILE_SIZE = 200 * 1024 * 1024  # 200 MB cap
-DEFAULT_EXPIRY_SECONDS = 15 * 60 # 15 minutes
+MAX_FILE_SIZE = 500 * 1024 * 1024  # 500 MB cap
+DEFAULT_EXPIRY_SECONDS = 60 * 60 # 1 hour
 
 
 def _generate_unique_code(conn) -> str:

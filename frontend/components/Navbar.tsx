@@ -16,7 +16,6 @@ export default function Navbar() {
           <a className="nav-link" href="#faq">FAQ</a>
         </nav>
         <div className="nav-actions">
-          <Link className="pill-button" href="/download">Retrieve a file</Link>
           <Link className="primary-button" href="/download">Retrieve with a key</Link>
         </div>
         <button className="mobile-toggle" type="button" aria-label="Toggle navigation" aria-expanded={open} onClick={() => setOpen(!open)}>
