@@ -4,6 +4,15 @@ import { uploadFile } from '@/lib/api/upload';
 import QRGenerator from './QRGenerator';
 import { useEffect, useRef, useState } from 'react';
 
+const EXPIRY_OPTIONS = [
+    { label: '5 minutes', seconds: 5 * 60 },
+    { label: '15 minutes', seconds: 15 * 60 },
+    { label: '30 minutes', seconds: 30 * 60 },
+    { label: '1 hour', seconds: 60 * 60 },
+];
+
+const DOWNLOAD_OPTIONS = [1, 3, 5, 10, 25];
+
 function formatCountdown(totalSeconds: number) {
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
@@ -18,6 +27,8 @@ export default function FileUploader() {
     const [shortCode, setShortCode] = useState<string | null>(null);
     const [expiresAt, setExpiresAt] = useState<number | null>(null);
     const [remainingSeconds, setRemainingSeconds] = useState(0);
+    const [expirySeconds, setExpirySeconds] = useState(60 * 60);
+    const [maxDownloads, setMaxDownloads] = useState(1);
     const [loading, setLoading] = useState(false);
     const [dragging, setDragging] = useState(false);
     const [error, setError] = useState(false);
@@ -30,7 +41,7 @@ export default function FileUploader() {
         setError(false);
         setLoading(true);
         try {
-            const result = await uploadFile(selected);
+            const result = await uploadFile(selected, { expirySeconds, maxDownloads });
             setShortCode(result.short_code);
             setFileId(result.id);
             setExpiresAt(result.expires_at);
@@ -74,6 +85,10 @@ export default function FileUploader() {
             <span>Available for</span>
             <strong>{remainingSeconds > 0 ? formatCountdown(remainingSeconds) : 'Expired'}</strong>
         </div>
+        <div className="expiry-note" role="status">
+            <span>Download limit</span>
+            <strong>{maxDownloads} {maxDownloads === 1 ? 'time' : 'times'}</strong>
+        </div>
         <QRGenerator fileId={fileId} shortCode={shortCode} />
         <p className="eyebrow" style={{ marginBottom: 0 }}>Short code</p><div className="short-code">{shortCode}</div>
         <div className="share-row">
@@ -97,6 +112,20 @@ export default function FileUploader() {
             <div className="upload-icon" aria-hidden="true">↑</div>
             <p className="upload-title">Drop a file here</p>
             <p className="upload-subtitle">or choose one from your device</p>
+            <div className="upload-options" onClick={(e) => e.stopPropagation()}>
+                <label className="upload-option">
+                    <span>File expires after</span>
+                    <select value={expirySeconds} onChange={(e) => setExpirySeconds(Number(e.target.value))}>
+                        {EXPIRY_OPTIONS.map((option) => <option key={option.seconds} value={option.seconds}>{option.label}</option>)}
+                    </select>
+                </label>
+                <label className="upload-option">
+                    <span>Maximum downloads</span>
+                    <select value={maxDownloads} onChange={(e) => setMaxDownloads(Number(e.target.value))}>
+                        {DOWNLOAD_OPTIONS.map((option) => <option key={option} value={option}>{option} {option === 1 ? 'time' : 'times'}</option>)}
+                    </select>
+                </label>
+            </div>
             <button className="primary-button" type="button" onClick={(e) => { e.stopPropagation(); inputRef.current?.click(); }}>Choose file</button>
             {error &&
                 <p className="form-error" style={{ marginTop: 16 }}>That upload didn’t go through. Try again.</p>}

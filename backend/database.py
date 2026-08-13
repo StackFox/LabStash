@@ -16,11 +16,11 @@ def init_db():
         CREATE TABLE IF NOT EXISTS files (
             id TEXT PRIMARY KEY,
             short_code TEXT UNIQUE NOT NULL,
-            storage_path TEXT NOT NULL,
             original_filename TEXT NOT NULL,
             size_bytes INTEGER NOT NULL,
             created_at INTEGER NOT NULL,
             expires_at INTEGER NOT NULL,
+            max_downloads INTEGER NOT NULL,
             downloaded INTEGER NOT NULL DEFAULT 0
         )
     """)

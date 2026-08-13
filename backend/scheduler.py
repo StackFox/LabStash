@@ -14,7 +14,7 @@ async def _delete_after_delay(file_id: str, delay_seconds: float):
     row = conn.execute("SELECT * FROM files WHERE id = ?", (file_id,)).fetchone()
     
     if row is not None:
-        delete_object(row["storage_path"])
+        delete_object(row["id"])
         conn.execute("DELETE FROM files WHERE id = ?", (file_id,))
         conn.commit()
     

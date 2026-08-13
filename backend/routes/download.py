@@ -33,12 +33,16 @@ async def download_file(identifier: str):
     # file id
     if UUID_PATTERN.match(identifier):
         row = conn.execute("SELECT * FROM files WHERE id = ?", (identifier,)).fetchone()
+        if row["downloaded"] >= row["max_downloads"]:
+            raise HTTPException(status_code=422, detail="Maximum file download limit reached")
         conn.execute("UPDATE files SET downloaded = downloaded + 1 WHERE id = ?", (identifier,))
     # short code
     else:
         short_code = identifier.strip().upper()
         _check_rate_limit(short_code)
         row = conn.execute("SELECT * FROM files WHERE short_code = ?", (short_code,)).fetchone()
+        if row["downloaded"] >= row["max_downloads"]:
+            raise HTTPException(status_code=422, detail="Maximum file download limit reached")
         conn.execute("UPDATE files SET downloaded = downloaded + 1 WHERE short_code = ?", (identifier,))
         
 
@@ -52,7 +56,8 @@ async def download_file(identifier: str):
         conn.close()
         raise HTTPException(status_code=410, detail="File has expired")
 
-    object_key = row["storage_path"]
+
+    object_key = row["id"]
     if not object_exists(object_key):
         conn.close()
         raise HTTPException(status_code=404, detail="File not found")
@@ -71,6 +76,6 @@ async def download_file(identifier: str):
 
 
 def _delete_file_record(conn, row):
-    delete_object(row["storage_path"])
+    delete_object(row["id"])
     conn.execute("DELETE FROM files WHERE id = ?", (row["id"],))
     conn.commit()

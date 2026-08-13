@@ -138,6 +138,10 @@ button { cursor: pointer; }
 .upload-icon { display: grid; place-items: center; width: 48px; height: 48px; margin: 0 auto 18px; border-radius: 50%; background: #29292e; color: #fff; }
 .upload-title { margin: 0 0 7px; color: #fff; font-size: 15px; font-weight: 600; }
 .upload-subtitle { margin: 0 0 22px; color: var(--color-mute); font-size: 13px; }
+.upload-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; width: min(100%, 360px); margin: 0 auto 18px; text-align: left; }
+.upload-option { display: grid; gap: 6px; color: var(--color-mute); font-size: 11px; }
+.upload-option select { width: 100%; min-width: 0; padding: 9px 10px; border: 1px solid var(--color-hairline); border-radius: 8px; outline: 0; color: #fff; background: var(--color-canvas); font-size: 12px; }
+.upload-option select:focus { border-color: var(--color-secondary); box-shadow: 0 0 0 3px rgba(61,79,196,.18); }
 .status-icon { color: var(--color-primary); font-size: 48px; margin-bottom: 16px; }
 .expiry-note { display: inline-flex; align-items: center; gap: 8px; margin: 4px 0 22px; padding: 8px 12px; border: 1px solid var(--color-hairline); border-radius: 999px; color: var(--color-body); background: var(--color-canvas); font-size: 12px; }
 .expiry-note strong { color: var(--color-primary); font-family: var(--font-mono); font-size: 13px; letter-spacing: .04em; }
@@ -187,6 +191,7 @@ button { cursor: pointer; }
   .tool-grid { grid-template-columns: 1fr; }
   .center-card { padding: 24px 16px; }
   .upload-zone { min-height: 280px; padding: 24px 16px; }
+  .upload-options { grid-template-columns: 1fr; width: min(100%, 260px); }
   .share-row { align-items: stretch; flex-direction: column; }
   .small-button { width: 100%; }
   .footer-grid { grid-template-columns: 1fr 1fr; gap: 28px 16px; }
