@@ -1,6 +1,8 @@
 'use client';
 
+import { downloadUpload, DownloadApiError } from '@/lib/api/download';
 import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 interface Props {
   fileId: string;
@@ -8,46 +10,37 @@ interface Props {
 
 export default function DirectDownloadButton({ fileId }: Props) {
   const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [retryAfter, setRetryAfter] = useState(0);
 
-  const handleDownload = async () => {
+  useEffect(() => {
+    if (retryAfter <= 0) return;
+    const timer = window.setInterval(() => setRetryAfter((seconds) => Math.max(0, seconds - 1)), 1000);
+    return () => window.clearInterval(timer);
+  }, [retryAfter]);
+
+  const downloadZip = async () => {
+    setLoading(true);
+    setError('');
+    setRetryAfter(0);
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/download/${fileId}`);
-
-      if (!response.ok) {
-        let detail = '';
-
-        try {
-          const error = await response.json() as { detail?: string };
-          detail = error.detail ?? '';
-        } catch {
-          // Keep the generic error behavior for non-JSON responses.
-        }
-
-        if (detail === 'File not found') {
-          router.push('/download/not-found');
-          return;
-        }
-
-        throw new Error(detail || 'Download failed');
+      await downloadUpload(fileId, 'labstash-download.zip');
+    } catch (caughtError) {
+      const apiError = caughtError instanceof DownloadApiError ? caughtError : null;
+      if (apiError?.status === 404) {
+        router.push('/download/not-found');
+        return;
       }
-
-      const disposition = response.headers.get('Content-Disposition');
-      const match = disposition?.match(/filename="?([^\"]+)"?/);
-      const objectUrl = URL.createObjectURL(await response.blob());
-      const link = document.createElement('a');
-
-      link.href = objectUrl;
-      link.download = match?.[1] ?? 'download';
-      link.click();
-      URL.revokeObjectURL(objectUrl);
-    } catch (error) {
-      console.error(error);
+      setError(apiError?.message ?? 'The files could not be retrieved.');
+      setRetryAfter(apiError?.retryAfter ?? 0);
+    } finally {
+      setLoading(false);
     }
   };
 
-  return (
-    <button className="primary-button full-button" onClick={handleDownload}>
-      Download file ↗
-    </button>
-  );
+  return <>
+    <button className="primary-button full-button" onClick={downloadZip} disabled={loading}>{loading ? 'Preparing ZIP…' : 'Download all files ↗'}</button>
+    {error && <p className="form-error" role="alert">{error}{retryAfter > 0 && ` — try again in ${retryAfter}s`}</p>}
+  </>;
 }

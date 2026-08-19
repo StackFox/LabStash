@@ -1,6 +1,5 @@
 import time
 import uuid
-from pathlib import Path
 
 from fastapi import APIRouter, UploadFile, File, HTTPException, Form
 
@@ -15,20 +14,23 @@ load_dotenv()
 
 router = APIRouter()
 
-MAX_FILE_SIZE = 500 * 1024 * 1024  # 500 MB cap
-DEFAULT_EXPIRY_SECONDS = 60 * 60  # 1 hour
+MAX_FILE_SIZE = 50 * 1024 * 1024  # 50 MB cap
+MAX_FILES_PER_UPLOAD = 10
+MAX_TOTAL_SIZE = 500 * 1024 * 1024 # 500 MB 
 
-HARD_MAX_DOWNLOADS = 25
+DEFAULT_EXPIRY_SECONDS = 60 * 60  # 1 hour
 
 MIN_EXPIRY_SECONDS = 5 * 60  # 5 minute
 MAX_EXPIRY_SECONDS = 1 * 60 * 60  # 1 hour
+
+HARD_MAX_DOWNLOADS = 25
 
 
 def _generate_unique_code(conn) -> str:
     for _ in range(5):
         code = generate_code()
         exists = conn.execute(
-            "SELECT 1 FROM files WHERE short_code = ?", (code,)
+            "SELECT 1 FROM files WHERE id = ?", (code,)
         ).fetchone()
 
         if not exists:
@@ -37,11 +39,20 @@ def _generate_unique_code(conn) -> str:
 
 
 @router.post("/api/upload", response_model=UploadResponse)
-async def upload_file(
-    file: UploadFile = File(...),
+async def upload_files(
+    files: list[UploadFile] = File(...),
     max_downloads: int = Form(1),
     expiry_seconds: int = Form(DEFAULT_EXPIRY_SECONDS),
 ):
+    if not files:
+        raise HTTPException(status_code=422, detail="No files provided")
+    
+    if len(files) > MAX_FILES_PER_UPLOAD:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Cannot upload more than {MAX_FILES_PER_UPLOAD} files at once"
+        )
+    
     if max_downloads < 1 or max_downloads > HARD_MAX_DOWNLOADS:
         raise HTTPException(
             status_code=422,
@@ -54,14 +65,23 @@ async def upload_file(
             detail=f"expiry_seconds must be between {MIN_EXPIRY_SECONDS} and {MAX_EXPIRY_SECONDS}"
         )
         
-    contents = await file.read()
+    file_contents = []
+    total_size = 0
+    
+    for file in files:
+        contents = await file.read()
+        if len(contents) > MAX_FILE_SIZE:
+            raise HTTPException(
+                status_code=413,
+                detail=f"{file.filename} exceeds the per-file size limit"
+            )
+        total_size += len(contents)
+        file_contents.append((file.filename, contents))
 
-    if len(contents) > MAX_FILE_SIZE:
-        raise HTTPException(status_code=413, detail="File too large")
+    if total_size > MAX_TOTAL_SIZE:
+        raise HTTPException(status_code=413, detail=f"Combined upload size exceeds the session limit of {MAX_TOTAL_SIZE}")
 
-    file_id = str(uuid.uuid4())
-    upload_bytes(object_key=file_id, data=contents)
-
+    upload_id = str(uuid.uuid4())
     now = int(time.time())
     expires_at = now + expiry_seconds
 
@@ -70,28 +90,39 @@ async def upload_file(
 
     conn.execute(
         """
-        INSERT INTO files 
-        (id, short_code, original_filename, size_bytes, 
-        created_at, expires_at, max_downloads, downloaded)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 0)
+        INSERT INTO uploads 
+        (id, short_code, created_at, expires_at, 
+        max_downloads, download_count)
+        VALUES (?, ?, ?, ?, ?, 0)
         """,
         (
-            file_id,
+            upload_id,
             short_code,
-            file.filename,
-            len(contents),
             now,
             expires_at,
-            max_downloads,
+            max_downloads
         ),
     )
+    
+    for filename, contents in file_contents:
+        file_id = str(uuid.uuid4())
+        storage_path = f"{upload_id}/{file_id}"
+        upload_bytes(object_key=storage_path, data=contents)
+        conn.execute(
+            """
+            INSERT INTO files (id, upload_id, storage_path, original_filename, size_bytes)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (file_id, upload_id, storage_path, filename, len(contents)),
+        )
+    
     conn.commit()
     conn.close()
 
-    schedule_deletion(file_id, expires_at)
+    schedule_deletion(upload_id, expires_at)
 
     return UploadResponse(
-        id=file_id,
+        id=upload_id,
         short_code=short_code,
         expires_at=expires_at,
     )

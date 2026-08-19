@@ -22,7 +22,7 @@ function formatCountdown(totalSeconds: number) {
 }
 
 export default function FileUploader() {
-    const [file, setFile] = useState<File | null>(null);
+    const [files, setFiles] = useState<File[]>([]);
     const [fileId, setFileId] = useState<string | null>(null);
     const [shortCode, setShortCode] = useState<string | null>(null);
     const [expiresAt, setExpiresAt] = useState<number | null>(null);
@@ -35,13 +35,13 @@ export default function FileUploader() {
     const [copied, setCopied] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
 
-    const handleFile = async (selected: File | null) => {
-        if (!selected) return;
-        setFile(selected);
+    const handleFiles = async (selectedFiles: File[]) => {
+        if (!selectedFiles.length) return;
+        setFiles(selectedFiles);
         setError(false);
         setLoading(true);
         try {
-            const result = await uploadFile(selected, { expirySeconds, maxDownloads });
+            const result = await uploadFile(selectedFiles, { expirySeconds, maxDownloads });
             setShortCode(result.short_code);
             setFileId(result.id);
             setExpiresAt(result.expires_at);
@@ -68,7 +68,7 @@ export default function FileUploader() {
     }, [expiresAt]);
 
     const reset = () => {
-        setFile(null);
+        setFiles([]);
         setFileId(null);
         setShortCode(null);
         setExpiresAt(null);
@@ -103,15 +103,15 @@ export default function FileUploader() {
 
     return <div
         className={`upload-zone ${dragging ? 'is-dragging' : ''}`}
-        onDragOver={(e) => { e.preventDefault(); setDragging(true); }} onDragLeave={() => setDragging(false)} onDrop={(e) => { e.preventDefault(); setDragging(false); handleFile(e.dataTransfer.files[0]); }} onClick={() => !loading && inputRef.current?.click()}>
-        <input ref={inputRef} type="file" hidden disabled={loading} onChange={(e) => handleFile(e.target.files?.[0] ?? null)} />
+        onDragOver={(e) => { e.preventDefault(); setDragging(true); }} onDragLeave={() => setDragging(false)} onDrop={(e) => { e.preventDefault(); setDragging(false); handleFiles(Array.from(e.dataTransfer.files)); }} onClick={() => !loading && inputRef.current?.click()}>
+        <input ref={inputRef} type="file" multiple hidden disabled={loading} onChange={(e) => handleFiles(Array.from(e.target.files ?? []))} />
         {loading ? <div><div className="upload-icon" aria-hidden="true">…</div>
-            <p className="upload-title">Uploading {file?.name}</p>
+            <p className="upload-title">Uploading {files.length} {files.length === 1 ? 'file' : 'files'}</p>
             <p className="upload-subtitle">Keep this tab open for a moment.</p>
         </div> : <div>
             <div className="upload-icon" aria-hidden="true">↑</div>
-            <p className="upload-title">Drop a file here</p>
-            <p className="upload-subtitle">or choose one from your device</p>
+            <p className="upload-title">Drop files here</p>
+            <p className="upload-subtitle">or choose multiple files from your device</p>
             <div className="upload-options" onClick={(e) => e.stopPropagation()}>
                 <label className="upload-option">
                     <span>File expires after</span>

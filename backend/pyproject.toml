@@ -8,4 +8,5 @@ dependencies = [
     "boto3>=1.43.65",
     "fastapi[standard]>=0.141.1",
     "python-dotenv>=1.2.2",
+    "redis>=8.1.0",
 ]

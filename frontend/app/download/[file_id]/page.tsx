@@ -13,8 +13,8 @@ export default async function DirectDownloadPage({ params }: Props) {
       <div className="container">
         <div className="center-card download-card">
           <div className="download-icon" aria-hidden="true">↓</div>
-          <h1>Your file is ready.</h1>
-          <p>One click and it’s back where it belongs.</p>
+          <h1>Your files are ready.</h1>
+          <p>Find every file from this upload and download them individually or together.</p>
           <DirectDownloadButton fileId={file_id} />
         </div>
       </div>

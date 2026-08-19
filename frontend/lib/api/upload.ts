@@ -5,13 +5,18 @@ export interface UploadOptions {
     expirySeconds: number;
 }
 
+export interface UploadOptions {
+    maxDownloads: number;
+    expirySeconds: number;
+}
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-export const uploadFile = async (file: File, options: UploadOptions): Promise<UploadResponse> => {
+export const uploadFile = async (files: File[], options: UploadOptions): Promise<UploadResponse> => {
     try {
         const formData = new FormData();
 
-        formData.append("file", file)
+        files.forEach((file) => formData.append("files", file));
         formData.append("max_downloads", String(options.maxDownloads));
         formData.append("expiry_seconds", String(options.expirySeconds));
 

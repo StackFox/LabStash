@@ -4,8 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from database import init_db, get_connection
-from routes import upload
-from routes import download
+from routes import upload, download
 from scheduler import reconcile_pending_deletions
 
 CLEANUP_INTERVAL_SECONDS = 15 * 60  # check for expired files every 15 minutes
