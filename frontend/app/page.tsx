@@ -1,6 +1,7 @@
 import FileUploader from '@/components/upload/FileUploader';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import FaqMoreButton from '@/components/FaqMoreButton';
 
 const steps = [
   ['01', 'Upload from the lab computer', 'Choose your files without signing in to a personal account.'],
@@ -19,8 +20,8 @@ export default function Home() {
 
     <section className="section" id="how-it-works"><div className="container"><div className="section-heading"><div><p className="eyebrow">Three simple steps</p><h2 className="display-serif">From lab computer<br />to your own device.</h2></div><p className="section-intro">A small escape hatch for the moment when emailing yourself is the only option left.</p></div><div className="step-grid">{steps.map(([number, title, copy]) => <article className="step-card" key={number}><span className="step-number">{number}</span><h3>{title}</h3><p>{copy}</p></article>)}</div></div></section>
 
-    <section className="section"><div className="container"><div className="api-callout"><div><p className="eyebrow">Designed for shared computers</p><h2 className="display-serif">No personal account left behind.</h2><p>Keep your Google account signed out. Skip the attachment limit. Upload what you need, take the key with you, and let the temporary storage do the rest.</p></div><a className="primary-button" href="#transfer">Upload a file ↑</a></div></div></section>
+    <section className="section" id="api-callout"><div className="container"><div className="api-callout"><div><p className="eyebrow">Designed for shared computers</p><h2 className="display-serif">No personal account left behind.</h2><p>Keep your Google account signed out. Skip the attachment limit. Upload what you need, take the key with you, and let the temporary storage do the rest.</p></div><a className="primary-button" href="#transfer">Upload a file ↑</a></div></div></section>
 
-    <section className="section" id="faq"><div className="container"><div className="section-heading"><div><p className="eyebrow">Good questions</p><h2 className="display-serif">Frequently asked.</h2></div></div><div className="faq-list">{faqs.map((faq) => <div className="faq-item" key={faq}><span aria-hidden="true">›</span><div>{faq}</div></div>)}</div><button className="secondary-button faq-more" type="button">+ Show more</button></div></section>
+    <section className="section" id="faq"><div className="container"><div className="section-heading"><div><p className="eyebrow">Good questions</p><h2 className="display-serif">Frequently asked.</h2></div></div><div className="faq-list">{faqs.map((faq) => <div className="faq-item" key={faq}><span aria-hidden="true">›</span><div>{faq}</div></div>)}<FaqMoreButton /></div></div></section>
   </main><Footer /></div>;
 }

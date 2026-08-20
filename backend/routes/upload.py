@@ -6,7 +6,7 @@ from fastapi import APIRouter, UploadFile, File, HTTPException, Form
 from database import get_connection
 from schemas import UploadResponse
 from dotenv import load_dotenv
-from services.r2 import upload_bytes
+from services.r2 import upload_bytes, delete_object
 from scheduler import schedule_deletion
 from shortcode import generate_code
 
@@ -30,7 +30,7 @@ def _generate_unique_code(conn) -> str:
     for _ in range(5):
         code = generate_code()
         exists = conn.execute(
-            "SELECT 1 FROM files WHERE id = ?", (code,)
+            "SELECT 1 FROM uploads WHERE short_code = ?", (code,)
         ).fetchone()
 
         if not exists:
@@ -86,38 +86,50 @@ async def upload_files(
     expires_at = now + expiry_seconds
 
     conn = get_connection()
-    short_code = _generate_unique_code(conn)
+    uploaded_paths: list[str] = []
+    try:
+        short_code = _generate_unique_code(conn)
 
-    conn.execute(
-        """
-        INSERT INTO uploads 
-        (id, short_code, created_at, expires_at, 
-        max_downloads, download_count)
-        VALUES (?, ?, ?, ?, ?, 0)
-        """,
-        (
-            upload_id,
-            short_code,
-            now,
-            expires_at,
-            max_downloads
-        ),
-    )
-    
-    for filename, contents in file_contents:
-        file_id = str(uuid.uuid4())
-        storage_path = f"{upload_id}/{file_id}"
-        upload_bytes(object_key=storage_path, data=contents)
         conn.execute(
             """
-            INSERT INTO files (id, upload_id, storage_path, original_filename, size_bytes)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO uploads 
+            (id, short_code, created_at, expires_at, 
+            max_downloads, download_count)
+            VALUES (?, ?, ?, ?, ?, 0)
             """,
-            (file_id, upload_id, storage_path, filename, len(contents)),
+            (
+                upload_id,
+                short_code,
+                now,
+                expires_at,
+                max_downloads
+            ),
         )
-    
-    conn.commit()
-    conn.close()
+
+        for filename, contents in file_contents:
+            file_id = str(uuid.uuid4())
+            storage_path = f"{upload_id}/{file_id}"
+            try:
+                upload_bytes(object_key=storage_path, data=contents)
+            except Exception:
+                for path in uploaded_paths:
+                    delete_object(path)
+                raise
+            uploaded_paths.append(storage_path)
+            conn.execute(
+                """
+                INSERT INTO files (id, upload_id, storage_path, original_filename, size_bytes)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (file_id, upload_id, storage_path, filename, len(contents)),
+            )
+
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
     schedule_deletion(upload_id, expires_at)
 

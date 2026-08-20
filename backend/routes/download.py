@@ -17,6 +17,8 @@ router = APIRouter()
 _attempt_counts: dict[str, list[float]] = {}
 MAX_ATTEMPTS = 10
 WINDOW_SECONDS = 60
+_RATE_LIMITER_SWEEP_INTERVAL = 300  # prune stale entries every 5 minutes
+_last_sweep = 0.0
 
 UUID_PATTERN = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.IGNORECASE
@@ -24,21 +26,33 @@ UUID_PATTERN = re.compile(
 
 
 def _check_rate_limit(code: str):
+    global _last_sweep
     now = time.time()
+
+    # Periodic cleanup of stale entries to prevent unbounded memory growth.
+    if now - _last_sweep > _RATE_LIMITER_SWEEP_INTERVAL:
+        _last_sweep = now
+        stale = [
+            key for key, attempts in _attempt_counts.items()
+            if not attempts or now - attempts[-1] > WINDOW_SECONDS
+        ]
+        for key in stale:
+            _attempt_counts.pop(key, None)
+
     attempts = _attempt_counts.setdefault(code, [])
     attempts[:] = [t for t in attempts if now - t < WINDOW_SECONDS]
     if len(attempts) >= MAX_ATTEMPTS:
         raise HTTPException(
-            status_code=429, detail={"message": "Too many attempts", "retry_after": 30}
+            status_code=429, detail={"message": "Too many attempts", "retry_after": WINDOW_SECONDS}
         )
     attempts.append(now)
 
 
 def _resolve_session(conn, identifier: str):
     if UUID_PATTERN.match(identifier):
-        # id
+        # id — normalize to lowercase to match stored UUIDs
         return conn.execute(
-            """SELECT * FROM uploads WHERE id = ?""", (identifier,)
+            """SELECT * FROM uploads WHERE id = ?""", (identifier.lower(),)
         ).fetchone()
     # short_code
     code = identifier.strip().upper()
@@ -164,15 +178,29 @@ async def download_file(identifier: str):
       """,
         (session["id"], int(time.time())),
     ).fetchone()
-    
+
     if updated is None:
         conn.close()
         raise HTTPException(status_code=410, detail="Download limit reached")
-    
+
     conn.commit()
     conn.close()
 
-    zip_stream = create_zip(zip_files)
+    try:
+        zip_stream = create_zip(zip_files)
+    except Exception:
+        # Roll back the download credit so the user isn't penalized
+        # for a zip-creation failure (e.g. R2 download error).
+        conn = get_connection()
+        try:
+            conn.execute(
+                "UPDATE uploads SET download_count = download_count - 1 WHERE id = ?",
+                (session["id"],),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+        raise
 
     return StreamingResponse(
         stream_zip(zip_stream),

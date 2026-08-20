@@ -6,6 +6,9 @@ const MAX_MANIFEST_CACHE_ENTRIES = 100;
 
 interface ManifestCacheEntry {
     files: StoredFile[];
+    download_count?: number;
+    max_downloads?: number;
+    downloads_remaining?: number;
     cachedAt: number;
 }
 
@@ -49,8 +52,11 @@ export async function listFiles(identifier: string): Promise<ManifestResponse> {
         // Refresh insertion order so the cache behaves like a small LRU.
         manifestCache.delete(cacheKey);
         manifestCache.set(cacheKey, cached);
-        // The file list is safe to cache, but download counters are dynamic.
-        return { files: cached.files };
+        // Return cached data including download metadata counters.
+        return { files: cached.files,
+            download_count: cached.download_count,
+            max_downloads: cached.max_downloads,
+            downloads_remaining: cached.downloads_remaining };
     }
 
     if (cached) manifestCache.delete(cacheKey);
@@ -68,7 +74,11 @@ export async function listFiles(identifier: string): Promise<ManifestResponse> {
         const payload = await response.json() as ManifestResponse;
         const files = payload.files ?? [];
 
-        manifestCache.set(cacheKey, { files, cachedAt: Date.now() });
+        manifestCache.set(cacheKey, { files,
+            download_count: payload.download_count,
+            max_downloads: payload.max_downloads,
+            downloads_remaining: payload.downloads_remaining,
+            cachedAt: Date.now() });
         while (manifestCache.size > MAX_MANIFEST_CACHE_ENTRIES) {
             const oldestKey = manifestCache.keys().next().value;
             if (oldestKey) manifestCache.delete(oldestKey);
@@ -89,6 +99,10 @@ export async function downloadUpload(identifier: string, fallbackFilename = 'lab
         const error = await getError(response, 'The files could not be downloaded.');
         throw new DownloadApiError(error.message, response.status, error.retryAfter);
     }
+
+    // Invalidate the manifest cache so download counters are fresh on next lookup.
+    const cacheKey = identifier.trim().toUpperCase();
+    manifestCache.delete(cacheKey);
 
     const disposition = response.headers.get('Content-Disposition');
     const match = disposition?.match(/filename="?([^\"]+)"?/);

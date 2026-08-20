@@ -8,6 +8,9 @@ from services.r2 import download_bytes
 
 def _archive_name(filename: str, used_names: set[str]) -> str:
     candidate = PurePath(filename).name or "file"
+    # Reject path traversal entries that survive PurePath(...)
+    if not candidate or candidate in (".", ".."):
+        candidate = "file"
     if candidate not in used_names:
         used_names.add(candidate)
         return candidate

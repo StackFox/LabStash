@@ -29,7 +29,12 @@ export default function DirectDownloadButton({ fileId }: Props) {
     } catch (caughtError) {
       const apiError = caughtError instanceof DownloadApiError ? caughtError : null;
       if (apiError?.status === 404) {
-        router.push('/download/not-found');
+        router.push('/d/not-found');
+        return;
+      }
+      if (apiError?.status === 410) {
+        setError(apiError?.message ?? 'This upload has expired or the download limit has been reached.');
+        setRetryAfter(0);
         return;
       }
       setError(apiError?.message ?? 'The files could not be retrieved.');

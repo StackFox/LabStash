@@ -13,5 +13,5 @@ wheels/
 .env
 
 # Database
-.db
+*.db
 storage/app.db
