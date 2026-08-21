@@ -120,7 +120,13 @@ async def upload_files(
 
             conn.commit()
         except Exception:
-            conn.rollback()
+            # The database may have terminated the connection (for example
+            # during a Neon restart), in which case rollback itself raises
+            # and would hide the original database/storage error.
+            try:
+                conn.rollback()
+            except Exception:
+                pass
             raise
 
     schedule_deletion(upload_id, expires_at)

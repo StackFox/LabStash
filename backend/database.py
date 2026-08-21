@@ -26,6 +26,12 @@ def _get_pool() -> ConnectionPool:
                     min_size=1,
                     max_size=5,
                     kwargs={"row_factory": dict_row},
+                    # Neon may terminate idle connections during restarts or
+                    # compute suspend/resume. Validate pooled connections
+                    # before handing them to a request.
+                    check=ConnectionPool.check_connection,
+                    max_idle=60,
+                    max_lifetime=300,
                     open=True,
                 )
     return _pool
