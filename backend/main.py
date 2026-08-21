@@ -23,13 +23,12 @@ async def lifespan(app: FastAPI):
         while True:
             await asyncio.sleep(CLEANUP_INTERVAL_SECONDS)
             try:
-                conn = get_connection()
-                now = int(time.time())
-                expired = conn.execute(
-                    "SELECT id, expires_at FROM uploads WHERE expires_at < ?",
-                    (now,),
-                ).fetchall()
-                conn.close()
+                with get_connection() as conn:
+                    now = int(time.time())
+                    expired = conn.execute(
+                        "SELECT id, expires_at FROM uploads WHERE expires_at < %s",
+                        (now,),
+                    ).fetchall()
                 for row in expired:
                     schedule_deletion(row["id"], row["expires_at"])
             except Exception:

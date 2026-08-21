@@ -8,5 +8,6 @@ dependencies = [
     "boto3>=1.43.65",
     "fastapi[standard]>=0.141.1",
     "python-dotenv>=1.2.2",
+    "psycopg[binary,pool]>=3.2.10",
     "redis>=8.1.0",
 ]

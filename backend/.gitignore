@@ -11,7 +11,3 @@ wheels/
 
 # Environment variables
 .env
-
-# Database
-*.db
-storage/app.db

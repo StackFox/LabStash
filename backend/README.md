@@ -9,7 +9,7 @@ TODO:
 5. add customisable timer ✅
 6. increase MAX_FILE_SIZE limit for first few users ✅
 7. add short_code validation at /download page ✅
-8. update /api/download endpoint to track the number of downloads in app.db ✅
+8. update /api/download endpoint to track the number of downloads in Neon PostgreSQL ✅
 9.  add feature for the user to limit the number of maximum downloads for the file the're uploading ✅
 10. add multiple file uploads options [IMPORTANT] ✅
     - DATABASE Schema update ✅

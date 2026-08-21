@@ -1,21 +1,44 @@
-import sqlite3
-from pathlib import Path
+from threading import Lock
 
-DB_PATH = Path(__file__).parent / "storage" / "app.db"
+from psycopg.rows import dict_row
+from psycopg_pool import ConnectionPool
+
+from config import NEON_DB_URL
+
+_pool: ConnectionPool | None = None
+_pool_lock = Lock()
+
+
+def _get_pool() -> ConnectionPool:
+    global _pool
+
+    if not NEON_DB_URL:
+        raise RuntimeError(
+            "NEON_DB_URL is required to connect to the PostgreSQL database. "
+            "Set it in the environment before starting the backend."
+        )
+
+    if _pool is None:
+        with _pool_lock:
+            if _pool is None:
+                _pool = ConnectionPool(
+                    conninfo=NEON_DB_URL,
+                    min_size=1,
+                    max_size=5,
+                    kwargs={"row_factory": dict_row},
+                    open=True,
+                )
+    return _pool
 
 
 def get_connection():
-    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")  # enable foreign keys
-    conn.execute("PRAGMA journal_mode = WAL")  # concurrent readers during writes
-    return conn
+    """Return a pooled connection context manager with dictionary-style rows."""
+    return _get_pool().connection()
 
 
 def init_db():
-    conn = get_connection()
-
-    conn.execute("""
+    with get_connection() as conn:
+        conn.execute("""
         CREATE TABLE IF NOT EXISTS uploads (
             id TEXT PRIMARY KEY,
             short_code TEXT UNIQUE NOT NULL,
@@ -24,9 +47,9 @@ def init_db():
             max_downloads INTEGER NOT NULL DEFAULT 1,
             download_count INTEGER NOT NULL DEFAULT 0
         )          
-    """)
+        """)
 
-    conn.execute("""
+        conn.execute("""
         CREATE TABLE IF NOT EXISTS files (
             id TEXT PRIMARY KEY,
             upload_id TEXT NOT NULL REFERENCES uploads(id),
@@ -34,18 +57,17 @@ def init_db():
             original_filename TEXT NOT NULL,
             size_bytes INTEGER NOT NULL
         )
-    """)
+        """)
 
-    conn.execute("""
+        conn.execute("""
         CREATE INDEX IF NOT EXISTS idx_files_upload_id ON files(upload_id);
-    """)
+        """)
 
-    conn.execute("""
+        conn.execute("""
         CREATE INDEX IF NOT EXISTS idx_expires_at ON uploads(expires_at);
-    """)
+        """)
 
-    conn.execute("""
+        conn.execute("""
         CREATE UNIQUE INDEX IF NOT EXISTS idx_short_code ON uploads(short_code);
-    """)
-    conn.commit()
-    conn.close()
+        """)
+        conn.commit()

@@ -52,154 +52,142 @@ def _resolve_session(conn, identifier: str):
     if UUID_PATTERN.match(identifier):
         # id — normalize to lowercase to match stored UUIDs
         return conn.execute(
-            """SELECT * FROM uploads WHERE id = ?""", (identifier.lower(),)
+            """SELECT * FROM uploads WHERE id = %s""", (identifier.lower(),)
         ).fetchone()
     # short_code
     code = identifier.strip().upper()
     _check_rate_limit(code)
     return conn.execute(
-        "SELECT * FROM uploads WHERE short_code = ?", (code,)
+        "SELECT * FROM uploads WHERE short_code = %s", (code,)
     ).fetchone()
 
 
 @router.get("/api/files/{identifier}")
 async def list_files(identifier: str):
-    conn = get_connection()
-    session = _resolve_session(conn, identifier)
+    with get_connection() as conn:
+        session = _resolve_session(conn, identifier)
 
-    if session is None:
-        conn.close()
-        raise HTTPException(status_code=404, detail="Not found")
+        if session is None:
+            raise HTTPException(status_code=404, detail="Not found")
 
-    if session["expires_at"] < int(time.time()):
-        conn.close()
-        raise HTTPException(status_code=410, detail="This upload has expired")
+        if session["expires_at"] < int(time.time()):
+            raise HTTPException(status_code=410, detail="This upload has expired")
 
-    normalized_code = identifier.strip().upper()
-    cache_key = f"manifest:v1:{normalized_code}"
-    manifest = None
-
-    try:
-        cached_manifest = await redis_client.get(cache_key)
-        if cached_manifest:
-            manifest = json.loads(cached_manifest)
-    except (RedisError, json.JSONDecodeError):
+        normalized_code = identifier.strip().upper()
+        cache_key = f"manifest:v1:{normalized_code}"
         manifest = None
 
-    if manifest is None:
-        files = conn.execute(
-            "SELECT id, original_filename, size_bytes FROM files WHERE upload_id = ?",
-            (session["id"],),
-        ).fetchall()
-
-        manifest = {
-            "files": [
-                {
-                    "file_id": row["id"],
-                    "filename": row["original_filename"],
-                    "size_bytes": row["size_bytes"],
-                }
-                for row in files
-            ]
-        }
-
         try:
-            await redis_client.set(cache_key, json.dumps(manifest), ex=300)
-        except RedisError:
-            pass
+            cached_manifest = await redis_client.get(cache_key)
+            if cached_manifest:
+                manifest = json.loads(cached_manifest)
+        except (RedisError, json.JSONDecodeError):
+            manifest = None
 
-    current = conn.execute(
-        """
+        if manifest is None:
+            files = conn.execute(
+                "SELECT id, original_filename, size_bytes FROM files WHERE upload_id = %s",
+                (session["id"],),
+            ).fetchall()
+
+            manifest = {
+                "files": [
+                    {
+                        "file_id": row["id"],
+                        "filename": row["original_filename"],
+                        "size_bytes": row["size_bytes"],
+                    }
+                    for row in files
+                ]
+            }
+
+            try:
+                await redis_client.set(cache_key, json.dumps(manifest), ex=300)
+            except RedisError:
+                pass
+
+        current = conn.execute(
+            """
       SELECT download_count, max_downloads
       FROM uploads
-      WHERE id = ?
+      WHERE id = %s
       """,
-        (session["id"],),
-    ).fetchone()
-    conn.close()
+            (session["id"],),
+        ).fetchone()
 
-    response_data = {
-        **manifest,
-        "download_count": current["download_count"],
-        "max_downloads": current["max_downloads"],
-        "downloads_remaining": max(
-            0,
-            current["max_downloads"] - current["download_count"],
-        ),
-    }
+        response_data = {
+            **manifest,
+            "download_count": current["download_count"],
+            "max_downloads": current["max_downloads"],
+            "downloads_remaining": max(
+                0,
+                current["max_downloads"] - current["download_count"],
+            ),
+        }
 
     return response_data
 
 
 @router.get("/api/download/{identifier}")
 async def download_file(identifier: str):
-    conn = get_connection()
-    session = _resolve_session(conn, identifier)
+    with get_connection() as conn:
+        session = _resolve_session(conn, identifier)
 
-    if session is None:
-        conn.close()
-        raise HTTPException(status_code=404, detail="Not found")
+        if session is None:
+            raise HTTPException(status_code=404, detail="Not found")
 
-    if session["expires_at"] < int(time.time()):
-        conn.close()
-        raise HTTPException(status_code=410, detail="This upload has expired")
+        if session["expires_at"] < int(time.time()):
+            raise HTTPException(status_code=410, detail="This upload has expired")
 
-    file_rows = conn.execute(
-        "SELECT storage_path, original_filename FROM files WHERE upload_id = ?",
-        (session["id"],),
-    ).fetchall()
-    if not file_rows:
-        conn.close()
-        raise HTTPException(status_code=404, detail="No files found for this upload")
+        file_rows = conn.execute(
+            "SELECT storage_path, original_filename FROM files WHERE upload_id = %s",
+            (session["id"],),
+        ).fetchall()
+        if not file_rows:
+            raise HTTPException(status_code=404, detail="No files found for this upload")
 
-    zip_files = []
-    for row in file_rows:
-        storage_path = row["storage_path"]
-        if not object_exists(storage_path):
-            # Support uploads created before storage paths were namespaced by upload.
-            legacy_path = storage_path.rsplit("/", 1)[-1]
-            if not object_exists(legacy_path):
-                conn.close()
-                raise HTTPException(
-                    status_code=404,
-                    detail="A file in this upload is no longer available",
-                )
-            storage_path = legacy_path
-        zip_files.append((storage_path, row["original_filename"]))
+        zip_files = []
+        for row in file_rows:
+            storage_path = row["storage_path"]
+            if not object_exists(storage_path):
+                # Support uploads created before storage paths were namespaced by upload.
+                legacy_path = storage_path.rsplit("/", 1)[-1]
+                if not object_exists(legacy_path):
+                    raise HTTPException(
+                        status_code=404,
+                        detail="A file in this upload is no longer available",
+                    )
+                storage_path = legacy_path
+            zip_files.append((storage_path, row["original_filename"]))
 
-    updated = conn.execute(
-        """
+        updated = conn.execute(
+            """
       UPDATE uploads
       SET download_count = download_count + 1
-      WHERE id = ?
+      WHERE id = %s
         AND download_count < max_downloads
-        AND expires_at >= ?
+        AND expires_at >= %s
       RETURNING download_count, max_downloads
-      """,
-        (session["id"], int(time.time())),
-    ).fetchone()
+            """,
+            (session["id"], int(time.time())),
+        ).fetchone()
 
-    if updated is None:
-        conn.close()
-        raise HTTPException(status_code=410, detail="Download limit reached")
+        if updated is None:
+            raise HTTPException(status_code=410, detail="Download limit reached")
 
-    conn.commit()
-    conn.close()
+        conn.commit()
 
     try:
         zip_stream = create_zip(zip_files)
     except Exception:
         # Roll back the download credit so the user isn't penalized
         # for a zip-creation failure (e.g. R2 download error).
-        conn = get_connection()
-        try:
+        with get_connection() as conn:
             conn.execute(
-                "UPDATE uploads SET download_count = download_count - 1 WHERE id = ?",
+                "UPDATE uploads SET download_count = download_count - 1 WHERE id = %s",
                 (session["id"],),
             )
             conn.commit()
-        finally:
-            conn.close()
         raise
 
     return StreamingResponse(

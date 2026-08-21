@@ -10,29 +10,25 @@ async def _delete_after_delay(upload_id: str, delay_seconds: float):
     if delay_seconds > 0:
         await asyncio.sleep(delay_seconds)
 
-    conn = get_connection()
     try:
-        file_rows = conn.execute(
-            "SELECT storage_path FROM files WHERE upload_id = ?", (upload_id,)
-        ).fetchall()
+        with get_connection() as conn:
+            file_rows = conn.execute(
+                "SELECT storage_path FROM files WHERE upload_id = %s", (upload_id,)
+            ).fetchall()
 
-        if not file_rows:
-            return
+            if not file_rows:
+                return
 
-        for file in file_rows:
-            try:
-                delete_object(file["storage_path"])
-            except Exception:
-                pass  # best-effort R2 cleanup; DB still gets cleaned below
+            for file in file_rows:
+                try:
+                    delete_object(file["storage_path"])
+                except Exception:
+                    pass  # best-effort R2 cleanup; DB still gets cleaned below
 
-        conn.execute("DELETE FROM files WHERE upload_id = ?", (upload_id,))
-        conn.execute("DELETE FROM uploads WHERE id = ?", (upload_id,))
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
+            conn.execute("DELETE FROM files WHERE upload_id = %s", (upload_id,))
+            conn.execute("DELETE FROM uploads WHERE id = %s", (upload_id,))
+            conn.commit()
     finally:
-        conn.close()
         _pending_tasks.pop(upload_id, None)
  
     
@@ -43,9 +39,8 @@ def schedule_deletion(upload_id: str, expires_at: int):
     
 
 def reconcile_pending_deletions():
-    conn = get_connection()
-    rows = conn.execute("SELECT id, expires_at FROM uploads").fetchall()
-    conn.close()
+    with get_connection() as conn:
+        rows = conn.execute("SELECT id, expires_at FROM uploads").fetchall()
     
     for row in rows:
         schedule_deletion(row["id"], row["expires_at"])
