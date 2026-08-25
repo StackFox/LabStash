@@ -1,6 +1,7 @@
 import FileUploader from '@/components/upload/FileUploader';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import FaqItem from '@/components/FaqItem';
 import FaqMoreButton from '@/components/FaqMoreButton';
 
 const steps = [
@@ -9,7 +10,13 @@ const steps = [
   ['03', 'Download it later', 'Use the key when you are home or back on another computer.'],
 ];
 
-const faqs = ['How long are my files available?', 'Do I need a Google account?', 'Can I upload files larger than an email attachment?', 'Where do I find my download key?', 'What happens when a file expires?'];
+const faqs = [
+  { q: 'How long are my files available?', a: 'Files are available for a short window you choose at upload — from 5 minutes up to 1 hour. After that they are permanently deleted.' },
+  { q: 'Do I need a Google account?', a: 'No. LabStash works entirely without signing in. Upload your files, grab the key, and download later on any device.' },
+  { q: 'Can I upload files larger than an email attachment?', a: 'Yes. Each file can be up to 50 MB and you can upload multiple files at once, with a combined limit of 500 MB.' },
+  { q: 'Where do I find my download key?', a: 'After uploading you will see a short code like ABC-234-XYZ and a QR code. Save the code or scan the QR to open the download page later.' },
+  { q: 'What happens when a file expires?', a: 'Once the time window closes the files are permanently deleted from storage and cannot be recovered.' },
+];
 
 export default function Home() {
   return <div className="site-shell"><Navbar /><main>
@@ -22,6 +29,6 @@ export default function Home() {
 
     <section className="section" id="api-callout"><div className="container"><div className="api-callout"><div><p className="eyebrow">Designed for shared computers</p><h2 className="display-serif">No personal account left behind.</h2><p>Keep your Google account signed out. Skip the attachment limit. Upload what you need, take the key with you, and let the temporary storage do the rest.</p></div><a className="primary-button" href="#transfer">Upload a file ↑</a></div></div></section>
 
-    <section className="section" id="faq"><div className="container"><div className="section-heading"><div><p className="eyebrow">Good questions</p><h2 className="display-serif">Frequently asked.</h2></div></div><div className="faq-list">{faqs.map((faq) => <div className="faq-item" key={faq}><span aria-hidden="true">›</span><div>{faq}</div></div>)}<FaqMoreButton /></div></div></section>
+    <section className="section" id="faq"><div className="container"><div className="section-heading"><div><p className="eyebrow">Good questions</p><h2 className="display-serif">Frequently asked.</h2></div></div><div className="faq-list">{faqs.map((faq) => <FaqItem key={faq.q} question={faq.q} answer={faq.a} />)}<FaqMoreButton /></div></div></section>
   </main><Footer /></div>;
 }

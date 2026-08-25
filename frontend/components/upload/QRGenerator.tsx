@@ -1,11 +1,11 @@
 import { QRCodeSVG } from 'qrcode.react'
 
 interface QRProps {
-    fileId: string;
+    uploadId: string;
 }
 
-const QRGenerator = ({ fileId }: QRProps) => {
-    const downloadUrl = `${process.env.NEXT_PUBLIC_HOST_URL}/d/${fileId}`
+const QRGenerator = ({ uploadId }: QRProps) => {
+    const downloadUrl = `${process.env.NEXT_PUBLIC_HOST_URL}/d/${uploadId}`
 
     return (
         <div className="qr-wrapper">

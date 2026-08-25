@@ -5,10 +5,10 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 interface Props {
-  fileId: string;
+  uploadId: string;
 }
 
-export default function DirectDownloadButton({ fileId }: Props) {
+export default function DirectDownloadButton({ uploadId }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -25,7 +25,7 @@ export default function DirectDownloadButton({ fileId }: Props) {
     setError('');
     setRetryAfter(0);
     try {
-      await downloadUpload(fileId, 'labstash-download.zip');
+      await downloadUpload(uploadId, 'labstash-download.zip');
     } catch (caughtError) {
       const apiError = caughtError instanceof DownloadApiError ? caughtError : null;
       if (apiError?.status === 404) {

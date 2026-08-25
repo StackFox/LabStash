@@ -1,6 +1,6 @@
 export interface UploadResponse {
     id: string;
-    short_code: string
+    short_code: string;
     expires_at: number;
 }
 
@@ -12,6 +12,7 @@ export interface StoredFile {
 
 export interface ManifestResponse {
     files: StoredFile[];
+    upload_id?: string;
     download_count?: number;
     max_downloads?: number;
     downloads_remaining?: number;

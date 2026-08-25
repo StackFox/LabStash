@@ -6,6 +6,7 @@ const MAX_MANIFEST_CACHE_ENTRIES = 100;
 
 interface ManifestCacheEntry {
     files: StoredFile[];
+    upload_id?: string;
     download_count?: number;
     max_downloads?: number;
     downloads_remaining?: number;
@@ -13,7 +14,8 @@ interface ManifestCacheEntry {
 }
 
 const manifestCache = new Map<string, ManifestCacheEntry>();
-const manifestRequests = new Map<string, Promise<ManifestResponse>>();
+const manifestRequests = new Map<string, { generation: number; promise: Promise<ManifestResponse> }>();
+let manifestCacheGeneration = 0;
 
 export class DownloadApiError extends Error {
     constructor(message: string, public readonly status: number, public readonly retryAfter = 0) {
@@ -54,6 +56,7 @@ export async function listFiles(identifier: string): Promise<ManifestResponse> {
         manifestCache.set(cacheKey, cached);
         // Return cached data including download metadata counters.
         return { files: cached.files,
+            upload_id: cached.upload_id,
             download_count: cached.download_count,
             max_downloads: cached.max_downloads,
             downloads_remaining: cached.downloads_remaining };
@@ -62,8 +65,12 @@ export async function listFiles(identifier: string): Promise<ManifestResponse> {
     if (cached) manifestCache.delete(cacheKey);
 
     const pendingRequest = manifestRequests.get(cacheKey);
-    if (pendingRequest) return pendingRequest;
+    if (pendingRequest) {
+        if (pendingRequest.generation === manifestCacheGeneration) return pendingRequest.promise;
+        manifestRequests.delete(cacheKey);
+    }
 
+    const requestGeneration = manifestCacheGeneration;
     const request = (async () => {
         const response = await fetch(`${API_URL}/api/files/${encodeURIComponent(cacheKey)}`);
         if (!response.ok) {
@@ -74,42 +81,59 @@ export async function listFiles(identifier: string): Promise<ManifestResponse> {
         const payload = await response.json() as ManifestResponse;
         const files = payload.files ?? [];
 
-        manifestCache.set(cacheKey, { files,
-            download_count: payload.download_count,
-            max_downloads: payload.max_downloads,
-            downloads_remaining: payload.downloads_remaining,
-            cachedAt: Date.now() });
-        while (manifestCache.size > MAX_MANIFEST_CACHE_ENTRIES) {
-            const oldestKey = manifestCache.keys().next().value;
-            if (oldestKey) manifestCache.delete(oldestKey);
+        if (requestGeneration === manifestCacheGeneration) {
+            manifestCache.set(cacheKey, { files,
+                upload_id: payload.upload_id,
+                download_count: payload.download_count,
+                max_downloads: payload.max_downloads,
+                downloads_remaining: payload.downloads_remaining,
+                cachedAt: Date.now() });
+            while (manifestCache.size > MAX_MANIFEST_CACHE_ENTRIES) {
+                const oldestKey = manifestCache.keys().next().value;
+                if (oldestKey) manifestCache.delete(oldestKey);
+            }
         }
 
         return payload;
     })().finally(() => {
-        manifestRequests.delete(cacheKey);
+        const currentRequest = manifestRequests.get(cacheKey);
+        if (currentRequest?.promise === request) manifestRequests.delete(cacheKey);
     });
 
-    manifestRequests.set(cacheKey, request);
+    manifestRequests.set(cacheKey, { generation: requestGeneration, promise: request });
     return request;
 }
 
 export async function downloadUpload(identifier: string, fallbackFilename = 'labstash-download.zip') {
-    const response = await fetch(`${API_URL}/api/download/${identifier}`);
+    const response = await fetch(`${API_URL}/api/download/${encodeURIComponent(identifier)}`);
     if (!response.ok) {
         const error = await getError(response, 'The files could not be downloaded.');
         throw new DownloadApiError(error.message, response.status, error.retryAfter);
     }
 
     // Invalidate the manifest cache so download counters are fresh on next lookup.
-    const cacheKey = identifier.trim().toUpperCase();
-    manifestCache.delete(cacheKey);
+    manifestCacheGeneration += 1;
+    manifestCache.clear();
 
     const disposition = response.headers.get('Content-Disposition');
-    const match = disposition?.match(/filename="?([^\"]+)"?/);
+    const match = disposition?.match(/filename="?([^"]+)"?/);
     const objectUrl = URL.createObjectURL(await response.blob());
     const link = document.createElement('a');
     link.href = objectUrl;
     link.download = match?.[1] ?? fallbackFilename;
     link.click();
     window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+}
+
+export async function deleteUpload(uploadId: string) {
+    const response = await fetch(`${API_URL}/api/delete/${encodeURIComponent(uploadId)}`, {
+        method: 'DELETE',
+    });
+    if (!response.ok) {
+        const error = await getError(response, 'The upload could not be deleted.');
+        throw new DownloadApiError(error.message, response.status, error.retryAfter);
+    }
+
+    manifestCacheGeneration += 1;
+    manifestCache.clear();
 }

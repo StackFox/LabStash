@@ -1,11 +1,12 @@
 'use client';
 
 import { useState } from 'react';
+import FaqItem from '@/components/FaqItem';
 
 const EXTRA_FAQS = [
-    'Is there a file size limit?',
-    'Can I upload multiple files at once?',
-    'How many times can I download my files?',
+    { q: 'Is there a file size limit?', a: 'Each file can be up to 50 MB and you can upload multiple files at once with a combined limit of 500 MB.' },
+    { q: 'Can I upload multiple files at once?', a: 'Yes. Select as many files as you need and they will all be bundled into a single ZIP when you download.' },
+    { q: 'How many times can I download my files?', a: 'You choose the limit when uploading — 1, 3, 5, 10, or 25 downloads. Once the limit is reached the upload is no longer available.' },
 ];
 
 export default function FaqMoreButton() {
@@ -15,10 +16,7 @@ export default function FaqMoreButton() {
     <>
       {expanded &&
         EXTRA_FAQS.map((faq) => (
-          <div className="faq-item" key={faq}>
-            <span aria-hidden="true">›</span>
-            <div>{faq}</div>
-          </div>
+          <FaqItem key={faq.q} question={faq.q} answer={faq.a} />
         ))}
       <button
         className="secondary-button faq-more"

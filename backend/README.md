@@ -23,6 +23,9 @@ TODO:
 13. add caching for manifest retrieval ✅
 14. add download files as zip at backend ✅
 15. can also use redis for caching ✅
+16. Add a "Delete now" button ✅
+    1.  inspect why it doesn't actually delete the files at the backend
+17. Update README.md
 
 ## issues
 

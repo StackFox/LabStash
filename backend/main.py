@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import os
 import time
 from contextlib import asynccontextmanager
@@ -7,8 +8,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from database import init_db, get_connection
-from routes import upload, download
+from routes import upload, download, delete_now
 from scheduler import reconcile_pending_deletions, schedule_deletion
+
+logger = logging.getLogger(__name__)
 
 CLEANUP_INTERVAL_SECONDS = 15 * 60  # check for expired files every 15 minutes
 
@@ -32,7 +35,7 @@ async def lifespan(app: FastAPI):
                 for row in expired:
                     schedule_deletion(row["id"], row["expires_at"])
             except Exception:
-                pass  # best-effort; next tick will retry
+                logger.warning("Periodic cleanup sweep failed", exc_info=True)
     asyncio.create_task(_periodic_cleanup())
     yield
 
@@ -55,6 +58,7 @@ app.add_middleware(
 
 app.include_router(upload.router)
 app.include_router(download.router)
+app.include_router(delete_now.router)
 
 
 @app.get("/")

@@ -48,7 +48,7 @@ def _check_rate_limit(code: str):
     attempts.append(now)
 
 
-def _resolve_session(conn, identifier: str):
+def resolve_session(conn, identifier: str):
     if UUID_PATTERN.match(identifier):
         # id — normalize to lowercase to match stored UUIDs
         return conn.execute(
@@ -65,7 +65,7 @@ def _resolve_session(conn, identifier: str):
 @router.get("/api/files/{identifier}")
 async def list_files(identifier: str):
     with get_connection() as conn:
-        session = _resolve_session(conn, identifier)
+        session = resolve_session(conn, identifier)
 
         if session is None:
             raise HTTPException(status_code=404, detail="Not found")
@@ -117,6 +117,7 @@ async def list_files(identifier: str):
 
         response_data = {
             **manifest,
+            "upload_id": session["id"],
             "download_count": current["download_count"],
             "max_downloads": current["max_downloads"],
             "downloads_remaining": max(
@@ -131,8 +132,15 @@ async def list_files(identifier: str):
 @router.get("/api/download/{identifier}")
 async def download_file(identifier: str):
     with get_connection() as conn:
-        session = _resolve_session(conn, identifier)
+        session = resolve_session(conn, identifier)
 
+        if session is None:
+            raise HTTPException(status_code=404, detail="Not found")
+
+        session = conn.execute(
+            "SELECT * FROM uploads WHERE id = %s FOR UPDATE",
+            (session["id"],),
+        ).fetchone()
         if session is None:
             raise HTTPException(status_code=404, detail="Not found")
 
@@ -175,20 +183,15 @@ async def download_file(identifier: str):
         if updated is None:
             raise HTTPException(status_code=410, detail="Download limit reached")
 
-        conn.commit()
+        try:
+            zip_stream = create_zip(zip_files)
+        except Exception:
+            # Roll back the download credit and release the row lock so the
+            # user isn't penalized for a zip-creation failure.
+            conn.rollback()
+            raise
 
-    try:
-        zip_stream = create_zip(zip_files)
-    except Exception:
-        # Roll back the download credit so the user isn't penalized
-        # for a zip-creation failure (e.g. R2 download error).
-        with get_connection() as conn:
-            conn.execute(
-                "UPDATE uploads SET download_count = download_count - 1 WHERE id = %s",
-                (session["id"],),
-            )
-            conn.commit()
-        raise
+        conn.commit()
 
     return StreamingResponse(
         stream_zip(zip_stream),

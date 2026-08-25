@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import DirectDownloadButton from '@/components/download/DirectDownloadButton';
-import { listFiles, DownloadApiError } from '@/lib/api/download';
+import { deleteUpload, listFiles, DownloadApiError } from '@/lib/api/download';
 import type { StoredFile } from '@/types/file';
+import DeleteConfirmDialog from '@/components/DeleteConfirmDialog';
 
 interface Props {
   identifier: string;
@@ -23,18 +24,40 @@ type Status = 'loading' | 'ready' | 'expired' | 'not-found' | 'error';
 export default function DirectDownloadClient({ identifier }: Props) {
   const [status, setStatus] = useState<Status>('loading');
   const [files, setFiles] = useState<StoredFile[]>([]);
+  const [uploadId, setUploadId] = useState<string | null>(null);
   const [downloadsRemaining, setDownloadsRemaining] = useState<number | null>(null);
   const [maxDownloads, setMaxDownloads] = useState<number | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+  const [deleted, setDeleted] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [deleteSuccessMessage, setDeleteSuccessMessage] = useState('');
+  const operationRef = useRef(0);
 
   useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect -- clear route-specific UI before loading the new identifier */
+    const operation = ++operationRef.current;
+    setStatus('loading');
+    setFiles([]);
+    setUploadId(null);
+    setDownloadsRemaining(null);
+    setMaxDownloads(null);
+    setErrorMessage('');
+    setDeleteError('');
+    setDeleteSuccessMessage('');
+    setDeleting(false);
+    setDeleted(false);
+    /* eslint-enable react-hooks/set-state-in-effect */
+
     let cancelled = false;
 
     (async () => {
       try {
         const manifest = await listFiles(identifier);
-        if (cancelled) return;
+        if (cancelled || operation !== operationRef.current) return;
         setFiles(manifest.files ?? []);
+        setUploadId(manifest.upload_id ?? null);
         if (typeof manifest.downloads_remaining === 'number') {
           setDownloadsRemaining(manifest.downloads_remaining);
         }
@@ -43,7 +66,7 @@ export default function DirectDownloadClient({ identifier }: Props) {
         }
         setStatus('ready');
       } catch (err) {
-        if (cancelled) return;
+        if (cancelled || operation !== operationRef.current) return;
         if (err instanceof DownloadApiError) {
           if (err.status === 410) {
             setStatus('expired');
@@ -60,8 +83,51 @@ export default function DirectDownloadClient({ identifier }: Props) {
       }
     })();
 
-    return () => { cancelled = true; };
+    return () => { cancelled = true; operationRef.current += 1; };
   }, [identifier]);
+
+  const deleteNow = async () => {
+    if (downloadsRemaining !== 0 || deleting) return;
+    setConfirmDeleteOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (downloadsRemaining !== 0 || deleting) return;
+
+    setConfirmDeleteOpen(false);
+    const operation = operationRef.current;
+    setDeleting(true);
+    setDeleteError('');
+    try {
+      await deleteUpload(uploadId ?? identifier);
+      if (operation !== operationRef.current) return;
+      setDeleteSuccessMessage('Upload deleted successfully.');
+      setDeleted(true);
+    } catch (error) {
+      if (operation !== operationRef.current) return;
+      setDeleteError(error instanceof Error ? error.message : 'The upload could not be deleted.');
+    } finally {
+      if (operation === operationRef.current) setDeleting(false);
+    }
+  };
+
+  if (deleted) return <div className="site-shell">
+    <Navbar />
+    <main className="page-main">
+      <div className="container">
+        <div className="center-card download-card">
+          <div className="download-icon" aria-hidden="true">✓</div>
+          <h1>Upload deleted.</h1>
+          <p>Your upload is no longer available for download.</p>
+          <div className="delete-success-actions">
+            <div className="success-toast" role="status" aria-live="polite">✓ {deleteSuccessMessage}</div>
+            <Link className="text-button" href="/">Upload a new file</Link>
+          </div>
+        </div>
+      </div>
+    </main>
+    <Footer />
+    </div>;
 
   if (status === 'loading') {
     return <div className="site-shell">
@@ -146,9 +212,15 @@ export default function DirectDownloadClient({ identifier }: Props) {
             </div>
           )}
           {downloadsRemaining === 0 ? (
-            <p className="form-error" role="alert">The download limit for this upload has been reached.</p>
+            <>
+              <p className="form-error" role="alert">The download limit for this upload has been reached.</p>
+              <button className="secondary-button" type="button" onClick={deleteNow} disabled={deleting}>
+                {deleting ? 'Deleting upload…' : 'Changed your mind? Delete this upload'}
+              </button>
+              {deleteError && <p className="form-error" role="alert">{deleteError}</p>}
+            </>
           ) : (
-            <DirectDownloadButton fileId={identifier} />
+            <DirectDownloadButton uploadId={uploadId ?? identifier} />
           )}
           {files.length > 0 && (
             <div className="retrieved-files" aria-live="polite" style={{ textAlign: 'left' }}>
@@ -169,5 +241,6 @@ export default function DirectDownloadClient({ identifier }: Props) {
       </div>
     </main>
     <Footer />
+    <DeleteConfirmDialog open={confirmDeleteOpen} busy={deleting} onCancel={() => setConfirmDeleteOpen(false)} onConfirm={confirmDelete} />
   </div>;
 }

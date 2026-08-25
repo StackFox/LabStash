@@ -1,7 +1,9 @@
 'use client';
 
 import { uploadFile, type UploadProgress } from '@/lib/api/upload';
+import { deleteUpload } from '@/lib/api/download';
 import QRGenerator from './QRGenerator';
+import DeleteConfirmDialog from '@/components/DeleteConfirmDialog';
 import { useEffect, useRef, useState } from 'react';
 
 const EXPIRY_OPTIONS = [
@@ -36,6 +38,10 @@ export default function FileUploader() {
     const [expirySeconds, setExpirySeconds] = useState(60 * 60);
     const [maxDownloads, setMaxDownloads] = useState(1);
     const [loading, setLoading] = useState(false);
+    const [deleting, setDeleting] = useState(false);
+    const [deleteError, setDeleteError] = useState<string | null>(null);
+    const [deleted, setDeleted] = useState(false);
+    const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
     const [dragging, setDragging] = useState(false);
     const [error, setError] = useState(false);
     const [copied, setCopied] = useState(false);
@@ -48,6 +54,7 @@ export default function FileUploader() {
         if (!selectedFiles.length) return;
         setFiles(selectedFiles);
         setError(false);
+        setDeleteError(null);
         setLoading(true);
         setProgress(null);
         try {
@@ -69,6 +76,28 @@ export default function FileUploader() {
         setCopied(true);
         window.setTimeout(() => setCopied(false), 2200);
     };
+    const deleteNow = async () => {
+        if (!fileId || deleting) return;
+        setConfirmDeleteOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!fileId || deleting) return;
+
+        setConfirmDeleteOpen(false);
+        setDeleting(true);
+        setDeleteError(null);
+        try {
+            await deleteUpload(fileId);
+            setExpiresAt(null);
+            setRemainingSeconds(0);
+            setDeleted(true);
+        }
+        catch (deleteFailure) {
+            setDeleteError(deleteFailure instanceof Error ? deleteFailure.message : 'The upload could not be deleted.');
+        }
+        finally { setDeleting(false); }
+    };
     useEffect(() => {
         if (!expiresAt) return;
 
@@ -82,6 +111,7 @@ export default function FileUploader() {
     }, [expiresAt]);
 
     const reset = () => {
+        if (deleting) return;
         setFiles([]);
         setFileId(null);
         setShortCode(null);
@@ -90,31 +120,51 @@ export default function FileUploader() {
         setCopied(false);
         setError(false);
         setProgress(null);
+        setDeleting(false);
+        setDeleteError(null);
+        setConfirmDeleteOpen(false);
+        setDeleted(false);
     };
 
-    if (shortCode && fileId) return <div className="center-card" style={{ margin: '0 auto', textAlign: 'center' }}>
+    if (deleted) return <div className="center-card" style={{ margin: '0 auto', textAlign: 'center' }}>
         <div className="status-icon" aria-hidden="true">✓</div>
-        <h2>Ready to share.</h2>
-        <p>{files.length} {files.length === 1 ? 'file' : 'files'} uploaded and waiting for download.</p>
-        <div className="expiry-note" role="status" aria-live="polite">
-            <span>Available for</span>
-            <strong>{remainingSeconds > 0 ? formatCountdown(remainingSeconds) : 'Expired'}</strong>
-        </div>
-        <div className="expiry-note" role="status">
-            <span>Download limit</span>
-            <strong>{maxDownloads} {maxDownloads === 1 ? 'time' : 'times'}</strong>
-        </div>
-        <QRGenerator fileId={fileId} />
-        <p className="eyebrow" style={{ marginBottom: 0 }}>Short code</p><div className="short-code">{shortCode}</div>
-        <div className="share-row">
-            <code>{`${typeof window !== 'undefined' ? window.location.origin : ''}/d/${shortCode}`}</code>
-            <button className={`small-button ${copied ? 'is-copied' : ''}`} type="button" onClick={copy} aria-live="polite">
-                {copied ? <>
-                    <span className="copy-check" aria-hidden="true">✓</span> Copied</> : 'Copy link'}
-            </button>
-        </div>
-        <button className="text-button" type="button" onClick={reset}>Upload another file</button>
+        <h2>Upload deleted.</h2>
+        <p>Your upload is no longer available for download.</p>
+        <button className="text-button" type="button" onClick={reset} disabled={deleting}>Upload another file</button>
     </div>;
+
+    if (shortCode && fileId) return <>
+        <div className="center-card" style={{ margin: '0 auto', textAlign: 'center' }}>
+            <div className="status-icon" aria-hidden="true">✓</div>
+            <h2>Ready to share.</h2>
+            <p>{files.length} {files.length === 1 ? 'file' : 'files'} uploaded and waiting for download.</p>
+            <div className="expiry-note" role="status" aria-live="polite">
+                <span>Available for</span>
+                <strong>{remainingSeconds > 0 ? formatCountdown(remainingSeconds) : 'Expired'}</strong>
+            </div>
+            <div className="expiry-note" role="status">
+                <span>Download limit</span>
+                <strong>{maxDownloads} {maxDownloads === 1 ? 'time' : 'times'}</strong>
+            </div>
+            <QRGenerator uploadId={fileId} />
+            <p className="eyebrow" style={{ marginBottom: 0 }}>Short code</p><div className="short-code">{shortCode}</div>
+            <div className="share-row">
+                <code>{`${typeof window !== 'undefined' ? window.location.origin : ''}/d/${shortCode}`}</code>
+                <button className={`small-button ${copied ? 'is-copied' : ''}`} type="button" onClick={copy} aria-live="polite">
+                    {copied ? <>
+                        <span className="copy-check" aria-hidden="true">✓</span> Copied</> : 'Copy link'}
+                </button>
+            </div>
+            <div className="delete-actions">
+                <button className="secondary-button delete-action-button" type="button" onClick={deleteNow} disabled={deleting}>
+                    Changed your mind? Delete this upload
+                </button>
+                {deleteError && <p className="form-error" role="alert">{deleteError}</p>}
+                <button className="text-button" type="button" onClick={reset} disabled={deleting}>Upload another file</button>
+            </div>
+        </div>
+        <DeleteConfirmDialog open={confirmDeleteOpen} busy={deleting} onCancel={() => setConfirmDeleteOpen(false)} onConfirm={confirmDelete} />
+    </>;
 
     return <div
         className={`upload-zone ${dragging ? 'is-dragging' : ''}`}
@@ -148,7 +198,8 @@ export default function FileUploader() {
                     </select>
                 </label>
             </div>
-            <button className="primary-button" type="button" onClick={(e) => { e.stopPropagation(); inputRef.current?.click(); }}>Choose file</button>
+            <button className="primary-button" type="button" onClick={(e) => { e.stopPropagation(); inputRef.current?.click(); }}>Upload files</button>
+            <p className="upload-limit-note">Maximum 50 MB per file · 500 MB total</p>
             {error &&
                 <p className="form-error" style={{ marginTop: 16 }}>That upload didn{"'"}t go through. Try again.</p>}
         </div>}
