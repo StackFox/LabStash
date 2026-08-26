@@ -1,36 +1,95 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# LabStash Frontend
+
+Next.js frontend for the LabStash temporary file-sharing service.
+
+## Tech Stack
+
+- **Next.js 16.3** (React 19) with App Router
+- **TypeScript**
+- **Tailwind CSS v4** (PostCSS plugin)
+- **Bun** as package manager
+- **qrcode.react** for QR code generation
+- **Vercel Analytics + Speed Insights**
 
 ## Getting Started
 
-First, run the development server:
-
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
+# Install dependencies
+bun install
+
+# Copy environment variables
+cp .env.example .env.local
+
+# Run the dev server
 bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment Variables
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Variable | Description |
+|----------|-------------|
+| `NEXT_PUBLIC_API_URL` | Backend API base URL (e.g. `http://localhost:8000`) |
+| `NEXT_PUBLIC_HOST_URL` | Public URL for QR code links (e.g. `http://localhost:3000`) |
 
-## Learn More
+`.env.local` is used for local development and points to `localhost:8000`. The `.env` file points to the production backend on Render.
 
-To learn more about Next.js, take a look at the following resources:
+## Project Structure
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+frontend/
+├── app/
+│   ├── page.tsx                 # Home page (hero, uploader, FAQ)
+│   ├── layout.tsx               # Root layout, metadata, Vercel analytics
+│   ├── globals.css              # Full design system (custom properties + component styles)
+│   ├── download/
+│   │   └── page.tsx             # Manual code-entry download page
+│   └── d/
+│       ├── [file_id]/page.tsx   # Direct download page (via QR/shared link)
+│       └── not-found/page.tsx   # File not found page
+├── components/
+│   ├── Navbar.tsx               # Sticky nav with mobile menu
+│   ├── Footer.tsx               # 4-column footer
+│   ├── FaqItem.tsx              # Expandable FAQ accordion
+│   ├── FaqMoreButton.tsx        # "Show more" FAQ toggle
+│   ├── DeleteConfirmDialog.tsx  # Native <dialog> confirmation modal
+│   ├── upload/
+│   │   ├── FileUploader.tsx     # Drag-drop upload, progress bar, post-upload UI
+│   │   └── QRGenerator.tsx      # QR code SVG renderer
+│   └── download/
+│       ├── FileDownloader.tsx       # Short-code input, file list, download/delete
+│       ├── DirectDownloadClient.tsx # Auto-fetch manifest, state machine UI
+│       └── DirectDownloadButton.tsx # Download trigger button with error handling
+├── lib/
+│   └── api/
+│       ├── upload.ts            # XHR upload with progress callback
+│       └── download.ts          # Fetch-based manifest/download/delete with cache
+└── types/
+    └── file.ts                  # TypeScript interfaces (UploadResponse, StoredFile, etc.)
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Frontend Routes
 
-## Deploy on Vercel
+| Path | Description |
+|------|-------------|
+| `/` | Home page with inline upload widget |
+| `/download` | Manual code-entry page to retrieve files |
+| `/d/{file_id}` | Direct download page (linked from QR codes) |
+| `/d/not-found` | Shown when a file ID is invalid |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Key Architecture Decisions
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **Upload progress**: Uses raw `XMLHttpRequest` (not `fetch`) to get `upload.onprogress` events.
+- **Manifest cache**: Client-side LRU cache (100 entries, 5-min TTL) with request deduplication prevents redundant API calls when navigating.
+- **State machines**: `DirectDownloadClient` and `FileDownloader` use explicit status states (`loading`, `ready`, `expired`, `not-found`, `error`, `deleted`) instead of scattered booleans.
+- **Race condition guards**: `operationRef` pattern ensures stale async operations don't overwrite newer state.
+- **Design system**: Custom CSS using CSS custom properties (not Tailwind utility classes). See `DESIGN.md` in the repo root for the full design spec.
+
+## Linting
+
+```bash
+bun lint
+```
+
+Uses ESLint 9 with `eslint-config-next` (core-web-vitals + TypeScript).

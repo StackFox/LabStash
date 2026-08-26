@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 
@@ -12,7 +13,10 @@ export default function Navbar() {
   return (
     <header className="site-nav">
       <div className="container nav-inner">
-        <Link href="/" className="wordmark" aria-label="LabStash home">LabStash</Link>
+        <Link href="/" className="wordmark" aria-label="LabStash home">
+          <Image src="/icon.svg" alt="" className="nav-logo" width={28} height={28} />
+          LabStash
+        </Link>
         <nav className="nav-links" aria-label="Main navigation">
           <Link className="nav-link" aria-current={isHome ? 'page' : undefined} href="/">Transfer</Link>
           <a className="nav-link" href="#how-it-works">How it works</a>
