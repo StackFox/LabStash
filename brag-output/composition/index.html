@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="en" data-resolution="landscape">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=1920, height=1080" />
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    margin: 0; width: 1920px; height: 1080px; overflow: hidden;
+    background: #0a0a0b;
+  }
+  #root {
+    position: relative; width: 1920px; height: 1080px; overflow: hidden;
+    background: #0a0a0b; color: #ffffff;
+    font-family: Inter, -apple-system, "Segoe UI", sans-serif;
+  }
+  .scene { position: absolute; inset: 0; width: 1920px; height: 1080px; }
+  .serif { font-family: "Instrument Serif", Georgia, "Times New Roman", serif; font-weight: 400; }
+  .mono { font-family: "JetBrains Mono", Consolas, "Courier New", monospace; }
+  .eyebrow {
+    color: #a1a1a8; font-size: 22px; font-weight: 600;
+    letter-spacing: 0.22em; text-transform: uppercase;
+  }
+  .orange { color: #f0532b; }
+
+  /* ---------- Scene 1: hook ---------- */
+  #scene1 { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  #s1-monitors { display: flex; gap: 28px; margin-bottom: 64px; }
+  .monitor {
+    width: 300px; height: 190px; border-radius: 14px;
+    border: 2px solid #2a2a2e; background: #141417; position: relative;
+  }
+  .monitor::after {
+    content: ""; position: absolute; left: 50%; bottom: -34px; width: 90px; height: 10px;
+    transform: translateX(-50%); background: #2a2a2e; border-radius: 0 0 8px 8px;
+  }
+  .monitor.lit { border-color: #f0532b; background: radial-gradient(circle at 50% 60%, #3a1f14 0%, #141417 75%); box-shadow: 0 0 90px rgba(240,83,43,0.35); }
+  .monitor.lit::before {
+    content: "lab-pc-04"; position: absolute; top: 22px; left: 0; right: 0; text-align: center;
+    color: #c9c9ce; font-size: 20px; font-family: "JetBrains Mono", Consolas, monospace;
+  }
+  .monitor.dim::before {
+    content: "_"; position: absolute; top: 22px; left: 0; right: 0; text-align: center;
+    color: #3a3a3f; font-size: 20px;
+  }
+  #s1-h1 { font-size: 150px; line-height: 1.0; text-align: center; letter-spacing: -0.015em; }
+  #s1-h1 em { font-style: italic; color: #f0532b; }
+
+  /* ---------- Scene 2: reveal ---------- */
+  #scene2 { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  #s2-brand { font-size: 170px; font-weight: 700; letter-spacing: -0.045em; }
+  #s2-brand .dot { color: #f0532b; font-weight: 400; }
+  #s2-tag { margin-top: 18px; color: #c9c9ce; font-size: 34px; }
+  #s2-pills { display: flex; gap: 24px; margin-top: 64px; }
+  .step-pill {
+    display: flex; align-items: center; gap: 16px;
+    border: 2px solid #2a2a2e; background: #1a1a1d; border-radius: 999px;
+    padding: 20px 36px; font-size: 28px; color: #ffffff;
+  }
+  .step-pill .num { color: #f0532b; font-family: "JetBrains Mono", Consolas, monospace; font-size: 24px; }
+
+  /* ---------- Scene 3: upload ---------- */
+  #scene3 { display: flex; align-items: center; justify-content: center; gap: 80px; }
+  #s3-zone {
+    width: 760px; min-height: 640px; border: 3px dashed #4a4a50; border-radius: 24px;
+    background: #141417; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 48px;
+  }
+  #s3-zone .up-icon {
+    width: 96px; height: 96px; border-radius: 50%; background: #29292e; color: #fff;
+    display: flex; align-items: center; justify-content: center; font-size: 52px; margin-bottom: 28px;
+  }
+  #s3-zone h3 { font-size: 40px; font-weight: 600; margin-bottom: 10px; }
+  #s3-zone .sub { color: #a1a1a8; font-size: 24px; margin-bottom: 36px; }
+  .file-chip {
+    display: flex; align-items: center; gap: 16px; width: 100%;
+    background: #1a1a1d; border: 2px solid #2a2a2e; border-radius: 14px;
+    padding: 16px 24px; margin-bottom: 16px; font-size: 26px;
+  }
+  .file-chip .fname { color: #fff; font-weight: 600; }
+  .file-chip .fsize { margin-left: auto; color: #a1a1a8; font-family: "JetBrains Mono", Consolas, monospace; font-size: 22px; }
+  .file-chip .tick { color: #f0532b; font-weight: 700; }
+  #s3-bar { width: 100%; height: 18px; border-radius: 999px; background: #0a0a0b; overflow: hidden; margin-top: 16px; }
+  #s3-fill { width: 100%; height: 100%; border-radius: 999px; background: #f0532b; transform: scaleX(0); transform-origin: left center; }
+  #s3-pct { margin-top: 14px; color: #c9c9ce; font-size: 28px; height: 40px; position: relative; width: 100%; text-align: center; }
+  #s3-pct span { position: absolute; left: 0; right: 0; }
+  #s3-side { width: 640px; }
+  #s3-side h2 { font-size: 110px; line-height: 0.98; letter-spacing: -0.015em; margin: 20px 0 24px; }
+  #s3-side p { color: #c9c9ce; font-size: 30px; line-height: 1.5; }
+  #s3-side .limit { margin-top: 28px; color: #a1a1a8; font-size: 22px; }
+
+  /* ---------- Scene 4: the key ---------- */
+  #scene4 { display: flex; align-items: center; justify-content: center; gap: 72px; }
+  #s4-card {
+    width: 860px; background: #1a1a1d; border: 2px solid #2a2a2e; border-radius: 28px;
+    padding: 56px 64px; text-align: center; position: relative; isolation: isolate;
+  }
+  #s4-glow {
+    position: absolute; inset: -60px; border-radius: 48px; z-index: -1;
+    background: radial-gradient(ellipse at 50% 45%, rgba(240,83,43,0.22) 0%, rgba(240,83,43,0) 65%);
+  }
+  #s4-ready { font-size: 44px; font-weight: 600; margin-bottom: 8px; }
+  #s4-ready .ok { color: #f0532b; }
+  #s4-sub { color: #c9c9ce; font-size: 24px; margin-bottom: 28px; }
+  #s4-pills { display: flex; gap: 16px; justify-content: center; margin-bottom: 32px; }
+  .mini-pill {
+    border: 2px solid #2a2a2e; background: #0a0a0b; border-radius: 999px;
+    padding: 12px 26px; font-size: 24px; color: #c9c9ce;
+  }
+  .mini-pill strong { color: #f0532b; font-family: "JetBrains Mono", Consolas, monospace; }
+  #s4-code { font-size: 86px; font-weight: 700; letter-spacing: 0.05em; color: #f0532b; margin: 8px 0 28px; white-space: nowrap; }
+  #s4-code .code-char { display: inline-block; }
+  #s4-qrrow { display: flex; align-items: center; justify-content: center; gap: 36px; }
+  #s4-qr { width: 220px; height: 220px; background: #ffffff; border-radius: 16px; padding: 14px; }
+  #s4-copy {
+    background: #f0532b; color: #fff; border: 0; border-radius: 999px;
+    font-size: 28px; font-weight: 700; padding: 22px 54px;
+  }
+  #s4-side { width: 620px; }
+  #s4-side h2 { font-size: 96px; line-height: 1.0; letter-spacing: -0.015em; margin: 18px 0 32px; }
+  .file-row {
+    display: flex; align-items: center; gap: 16px; background: #1a1a1d;
+    border: 2px solid #2a2a2e; border-radius: 14px; padding: 18px 26px; margin-bottom: 14px; font-size: 26px;
+  }
+  .file-row .fname { font-weight: 600; }
+  .file-row .fsize { margin-left: auto; color: #a1a1a8; font-family: "JetBrains Mono", Consolas, monospace; font-size: 22px; }
+  #s4-dl {
+    margin-top: 22px; width: 100%; background: #f0532b; color: #fff; border: 0;
+    border-radius: 999px; font-size: 32px; font-weight: 700; padding: 26px 0;
+  }
+
+  /* ---------- Scene 5: outro ---------- */
+  #scene5 { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+  #s5-glow {
+    position: absolute; left: 50%; top: 50%; width: 1400px; height: 700px; z-index: 0;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(ellipse at center, rgba(240,83,43,0.16) 0%, rgba(240,83,43,0) 62%);
+  }
+  #s5-h1 { position: relative; z-index: 1; font-size: 148px; line-height: 0.98; letter-spacing: -0.015em; }
+  #s5-h1 em { font-style: italic; color: #f0532b; }
+  #s5-brand { position: relative; z-index: 1; margin-top: 56px; font-size: 44px; font-weight: 700; letter-spacing: -0.04em; }
+  #s5-brand .dot { color: #f0532b; font-weight: 400; }
+  #s5-note { position: relative; z-index: 1; margin-top: 16px; color: #a1a1a8; font-size: 26px; }
+</style>
+</head>
+<body>
+<div id="root" data-composition-id="main" data-start="0" data-duration="20" data-width="1920" data-height="1080">
+
+  <!-- Scene 1: hook 0-3 -->
+  <section id="scene1" class="scene clip" data-start="0" data-duration="3" data-track-index="1">
+    <div id="s1-monitors">
+      <div class="monitor dim"></div>
+      <div class="monitor lit"></div>
+      <div class="monitor dim"></div>
+    </div>
+    <p class="eyebrow" id="s1-eyebrow">Temporary storage for computer labs</p>
+    <h1 class="serif" id="s1-h1" style="margin-top:26px">Class is over.<br /><em>Your files live THERE now.</em></h1>
+  </section>
+
+  <!-- Scene 2: reveal 3-6 -->
+  <section id="scene2" class="scene clip" data-start="3" data-duration="3" data-track-index="1">
+    <div id="s2-brand">LabStash<span class="dot">.</span></div>
+    <p id="s2-tag">Upload from the lab computer. Download it later. No account needed.</p>
+    <div id="s2-pills">
+      <div class="step-pill" id="pill1"><span class="num">01</span> Upload</div>
+      <div class="step-pill" id="pill2"><span class="num">02</span> Get a key</div>
+      <div class="step-pill" id="pill3"><span class="num">03</span> Download later</div>
+    </div>
+  </section>
+
+  <!-- Scene 3: the drop 6-11 -->
+  <section id="scene3" class="scene clip" data-start="6" data-duration="5" data-track-index="1">
+    <div id="s3-zone">
+      <div class="up-icon">&#8593;</div>
+      <h3>Drop files here</h3>
+      <p class="sub">or choose multiple files from your device</p>
+      <div class="file-chip" id="chip1"><span class="tick">&#10003;</span><span class="fname">report.pdf</span><span class="fsize mono">2.4 MB</span></div>
+      <div class="file-chip" id="chip2"><span class="tick">&#10003;</span><span class="fname">data.csv</span><span class="fsize mono">800 KB</span></div>
+      <div class="file-chip" id="chip3"><span class="tick">&#10003;</span><span class="fname">slides.pptx</span><span class="fsize mono">12.1 MB</span></div>
+      <div id="s3-bar"><div id="s3-fill"></div></div>
+      <div id="s3-pct" class="mono"><span id="pct1">24%</span><span id="pct2">68%</span><span id="pct3">100%</span></div>
+    </div>
+    <div id="s3-side">
+      <p class="eyebrow" id="s3-eyebrow">Step 01 — upload</p>
+      <h2 class="serif" id="s3-h2">Stash it<br />before you<br />leave.</h2>
+      <p id="s3-copy">No Google login. No 25 MB email limit. No forgotten sign-out.</p>
+      <p class="limit mono" id="s3-limit">50 MB per file · 500 MB total</p>
+    </div>
+  </section>
+
+  <!-- Scene 4: the key 11-16 -->
+  <section id="scene4" class="scene clip" data-start="11" data-duration="5" data-track-index="1">
+    <div id="s4-card">
+      <div id="s4-glow"></div>
+      <div id="s4-ready"><span class="ok">&#10003;</span> Ready to share.</div>
+      <p id="s4-sub">3 files uploaded and waiting for download.</p>
+      <div id="s4-pills">
+        <div class="mini-pill">Available for <strong>00:59:59</strong></div>
+        <div class="mini-pill">Download limit <strong>1 time</strong></div>
+      </div>
+      <div id="s4-code" class="mono" aria-label="ABC-234-XYZ"><span class="code-char">A</span><span class="code-char">B</span><span class="code-char">C</span><span class="code-char">-</span><span class="code-char">2</span><span class="code-char">3</span><span class="code-char">4</span><span class="code-char">-</span><span class="code-char">X</span><span class="code-char">Y</span><span class="code-char">Z</span></div>
+      <div id="s4-qrrow">
+        <svg id="s4-qr" viewBox="0 0 100 100" role="img" aria-label="QR code">
+          <rect x="0" y="0" width="100" height="100" fill="#ffffff"/>
+          <g fill="#0a0a0b">
+            <rect x="6" y="6" width="26" height="26"/><rect x="10" y="10" width="18" height="18" fill="#ffffff"/><rect x="14" y="14" width="10" height="10"/>
+            <rect x="68" y="6" width="26" height="26"/><rect x="72" y="10" width="18" height="18" fill="#ffffff"/><rect x="76" y="14" width="10" height="10"/>
+            <rect x="6" y="68" width="26" height="26"/><rect x="10" y="72" width="18" height="18" fill="#ffffff"/><rect x="14" y="76" width="10" height="10"/>
+            <rect x="40" y="8" width="6" height="6"/><rect x="48" y="14" width="6" height="6"/><rect x="56" y="8" width="6" height="6"/>
+            <rect x="8" y="40" width="6" height="6"/><rect x="20" y="46" width="6" height="6"/><rect x="40" y="40" width="6" height="6"/>
+            <rect x="48" y="48" width="6" height="6"/><rect x="56" y="40" width="6" height="6"/><rect x="40" y="56" width="6" height="6"/>
+            <rect x="56" y="56" width="6" height="6"/><rect x="48" y="64" width="6" height="6"/><rect x="68" y="40" width="6" height="6"/>
+            <rect x="80" y="46" width="6" height="6"/><rect x="88" y="40" width="6" height="6"/><rect x="74" y="56" width="6" height="6"/>
+            <rect x="86" y="62" width="6" height="6"/><rect x="68" y="68" width="6" height="6"/><rect x="80" y="74" width="6" height="6"/>
+            <rect x="88" y="80" width="6" height="6"/><rect x="68" y="88" width="6" height="6"/><rect x="56" y="80" width="6" height="6"/>
+            <rect x="40" y="72" width="6" height="6"/><rect x="48" y="88" width="6" height="6"/><rect x="20" y="88" width="6" height="6"/>
+            <rect x="8" y="88" width="6" height="6"/><rect x="74" y="80" width="6" height="6"/><rect x="62" y="68" width="6" height="6"/>
+          </g>
+        </svg>
+        <button id="s4-copy" type="button" tabindex="-1">Copy link</button>
+      </div>
+    </div>
+    <div id="s4-side">
+      <p class="eyebrow" id="s4-eyebrow">Step 02 + 03 — key + getaway</p>
+      <h2 class="serif" id="s4-h2">Scan it.<br />Type it.<br />Take it.</h2>
+      <div class="file-row" id="row1"><span class="fname">report.pdf</span><span class="fsize">2.4 MB</span></div>
+      <div class="file-row" id="row2"><span class="fname">data.csv</span><span class="fsize">800 KB</span></div>
+      <div class="file-row" id="row3"><span class="fname">slides.pptx</span><span class="fsize">12.1 MB</span></div>
+      <button id="s4-dl" type="button" tabindex="-1">Download ZIP</button>
+    </div>
+  </section>
+
+  <!-- Scene 5: outro 16-20 (beat-locked at 16.02 strong cue) -->
+  <section id="scene5" class="scene clip" data-start="16" data-duration="4" data-track-index="1">
+    <div id="s5-glow"></div>
+    <h1 class="serif" id="s5-h1">Take your work home.<br /><em>Not your account.</em></h1>
+    <div id="s5-brand">LabStash<span class="dot">.</span></div>
+    <p id="s5-note">Built for the last five minutes of a lab session.</p>
+  </section>
+
+  <!-- Audio -->
+  <audio id="bg-music" data-start="0" data-duration="20" data-track-index="10" data-volume="0.35" data-fade-out="2" src="assets/music/happy-beats-business-moves-vol-1-by-ende-dot-app.mp3"></audio>
+  <audio id="sfx-1" data-start="1.15" data-duration="2" data-track-index="11" data-volume="0.7" src="assets/sfx/interface/drop_001.ogg"></audio>
+  <audio id="sfx-2" data-start="2.95" data-duration="2" data-track-index="12" data-volume="0.7" src="assets/sfx/impact/impactSoft_medium_001.ogg"></audio>
+  <audio id="sfx-3" data-start="3.97" data-duration="2" data-track-index="13" data-volume="0.7" src="assets/sfx/casino/card-place-1.ogg"></audio>
+  <audio id="sfx-4" data-start="4.48" data-duration="2" data-track-index="14" data-volume="0.7" src="assets/sfx/casino/card-place-2.ogg"></audio>
+  <audio id="sfx-5" data-start="4.98" data-duration="2" data-track-index="15" data-volume="0.7" src="assets/sfx/casino/card-place-3.ogg"></audio>
+  <audio id="sfx-6" data-start="6.47" data-duration="2" data-track-index="16" data-volume="0.7" src="assets/sfx/interface/drop_002.ogg"></audio>
+  <audio id="sfx-7" data-start="6.97" data-duration="2" data-track-index="17" data-volume="0.7" src="assets/sfx/interface/drop_001.ogg"></audio>
+  <audio id="sfx-8" data-start="7.47" data-duration="2" data-track-index="18" data-volume="0.7" src="assets/sfx/interface/drop_002.ogg"></audio>
+  <audio id="sfx-9" data-start="11.55" data-duration="2" data-track-index="19" data-volume="0.55" src="assets/sfx/keyboard/keypress-007.wav"></audio>
+  <audio id="sfx-10" data-start="11.95" data-duration="2" data-track-index="20" data-volume="0.55" src="assets/sfx/keyboard/keypress-012.wav"></audio>
+  <audio id="sfx-11" data-start="12.35" data-duration="2" data-track-index="21" data-volume="0.55" src="assets/sfx/keyboard/keypress-019.wav"></audio>
+  <audio id="sfx-12" data-start="12.96" data-duration="2" data-track-index="22" data-volume="0.7" src="assets/sfx/casino/card-place-1.ogg"></audio>
+  <audio id="sfx-13" data-start="13.46" data-duration="2" data-track-index="23" data-volume="0.7" src="assets/sfx/casino/card-place-2.ogg"></audio>
+  <audio id="sfx-14" data-start="13.97" data-duration="2" data-track-index="24" data-volume="0.7" src="assets/sfx/casino/card-place-3.ogg"></audio>
+  <audio id="sfx-15" data-start="14.75" data-duration="2" data-track-index="25" data-volume="0.75" src="assets/sfx/interface/click_003.ogg"></audio>
+  <audio id="sfx-16" data-start="14.9" data-duration="2" data-track-index="26" data-volume="0.8" src="assets/sfx/impact/impactBell_heavy_000.ogg"></audio>
+  <audio id="sfx-17" data-start="16.05" data-duration="2" data-track-index="27" data-volume="0.7" src="assets/sfx/impact/impactBell_heavy_000.ogg"></audio>
+
+</div>
+<script>
+  var tl = gsap.timeline({ paused: true });
+
+  // ---- Scene 1: hook (0-3) ----
+  tl.fromTo("#s1-monitors", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5 }, 0.1);
+  tl.fromTo("#s1-eyebrow", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.4 }, 0.4);
+  tl.fromTo("#s1-h1", { opacity: 0, y: 44, scale: 0.96 }, { opacity: 1, y: 0, scale: 1, duration: 0.6 }, 0.6);
+  tl.to("#s1-h1", { opacity: 1, duration: 1.6 }, 1.2);
+
+  // ---- Scene 2: reveal (3-6) ----
+  tl.fromTo("#s2-brand", { opacity: 0, y: 50, scale: 0.94 }, { opacity: 1, y: 0, scale: 1, duration: 0.55 }, 3.0);
+  tl.fromTo("#s2-tag", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.45 }, 3.4);
+  // beat-grid: pill 1 at 4.02s, pill 2 at 4.53s, pill 3 at 5.03s
+  tl.fromTo("#pill1", { opacity: 0, y: 26, scale: 0.92 }, { opacity: 1, y: 0, scale: 1, duration: 0.35 }, 4.02);
+  tl.fromTo("#pill2", { opacity: 0, y: 26, scale: 0.92 }, { opacity: 1, y: 0, scale: 1, duration: 0.35 }, 4.53);
+  tl.fromTo("#pill3", { opacity: 0, y: 26, scale: 0.92 }, { opacity: 1, y: 0, scale: 1, duration: 0.35 }, 5.03);
+
+  // ---- Scene 3: the drop (6-11) ----
+  tl.fromTo("#s3-zone", { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.5 }, 6.1);
+  tl.fromTo("#s3-eyebrow", { opacity: 0 }, { opacity: 1, duration: 0.4 }, 6.2);
+  tl.fromTo("#s3-h2", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5 }, 6.3);
+  tl.fromTo("#s3-copy", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.4 }, 6.6);
+  tl.fromTo("#s3-limit", { opacity: 0 }, { opacity: 1, duration: 0.4 }, 6.9);
+  // beat-grid: chip 1 at 6.52s, chip 2 at 7.02s, chip 3 at 7.52s
+  tl.fromTo("#chip1", { opacity: 0, x: -40 }, { opacity: 1, x: 0, duration: 0.3 }, 6.52);
+  tl.fromTo("#chip2", { opacity: 0, x: -40 }, { opacity: 1, x: 0, duration: 0.3 }, 7.02);
+  tl.fromTo("#chip3", { opacity: 0, x: -40 }, { opacity: 1, x: 0, duration: 0.3 }, 7.52);
+  tl.fromTo("#pct1", { opacity: 0 }, { opacity: 1, duration: 0.2 }, 7.7);
+  tl.to("#pct1", { opacity: 0, duration: 0.2 }, 8.15);
+  tl.fromTo("#s3-fill", { scaleX: 0 }, { scaleX: 1, duration: 1.7, ease: "power1.inOut" }, 7.7);
+  tl.fromTo("#pct2", { opacity: 0 }, { opacity: 1, duration: 0.2 }, 8.35);
+  tl.to("#pct2", { opacity: 0, duration: 0.2 }, 8.9);
+  tl.fromTo("#pct3", { opacity: 0, scale: 0.9 }, { opacity: 1, scale: 1, duration: 0.3 }, 9.4);
+  tl.to("#s3-zone", { opacity: 1, duration: 1.0 }, 9.5);
+
+  // ---- Scene 4: the key (11-16) ----
+  tl.fromTo("#s4-card", { opacity: 0, y: 40, scale: 0.97 }, { opacity: 1, y: 0, scale: 1, duration: 0.5 }, 11.1);
+  tl.fromTo("#s4-ready", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.35 }, 11.3);
+  tl.fromTo("#s4-sub", { opacity: 0 }, { opacity: 1, duration: 0.3 }, 11.5);
+  tl.fromTo("#s4-pills", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.35 }, 11.6);
+  tl.fromTo("#s4-code .code-char", { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.18, stagger: 0.09 }, 11.7);
+  tl.fromTo("#s4-eyebrow", { opacity: 0 }, { opacity: 1, duration: 0.35 }, 11.8);
+  tl.fromTo("#s4-h2", { opacity: 0, y: 26 }, { opacity: 1, y: 0, duration: 0.45 }, 11.9);
+  tl.fromTo("#s4-qrrow", { opacity: 0, scale: 0.94 }, { opacity: 1, scale: 1, duration: 0.4 }, 12.9);
+  // beat-grid: row 1 at 13.01s, row 2 at 13.51s, row 3 at 14.02s
+  tl.fromTo("#row1", { opacity: 0, x: -36 }, { opacity: 1, x: 0, duration: 0.3 }, 13.01);
+  tl.fromTo("#row2", { opacity: 0, x: -36 }, { opacity: 1, x: 0, duration: 0.3 }, 13.51);
+  tl.fromTo("#row3", { opacity: 0, x: -36 }, { opacity: 1, x: 0, duration: 0.3 }, 14.02);
+  tl.fromTo("#s4-dl", { opacity: 0, y: 18, scale: 0.96 }, { opacity: 1, y: 0, scale: 1, duration: 0.35 }, 14.5);
+  tl.to("#s4-dl", { scale: 1.04, duration: 0.14, yoyo: true, repeat: 1 }, 14.9);
+
+  // ---- Scene 5: outro (16-20) ----
+  // beat-locked: 16.02s (outro headline lands on strong cue 16.02s)
+  tl.fromTo("#s5-glow", { opacity: 0 }, { opacity: 1, duration: 1.2 }, 16.0);
+  tl.fromTo("#s5-h1", { opacity: 0, y: 50, scale: 0.95 }, { opacity: 1, y: 0, scale: 1, duration: 0.6 }, 16.02);
+  tl.fromTo("#s5-brand", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.45 }, 16.7);
+  tl.fromTo("#s5-note", { opacity: 0 }, { opacity: 1, duration: 0.5 }, 17.1);
+  tl.to("#s5-glow", { opacity: 0.6, duration: 1.4, yoyo: true, repeat: 1 }, 17.2);
+  tl.to("#s5-h1", { opacity: 1, duration: 1.0 }, 18.6);
+
+  window.__timelines = window.__timelines || {};
+  window.__timelines["main"] = tl;
+  tl.seek(0);
+</script>
+</body>
+</html>

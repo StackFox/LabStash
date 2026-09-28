@@ -4,6 +4,12 @@
 
 LabStash is a temporary file-sharing service designed for computer labs. Upload files before you leave, get a short code, and download them from any device later. Files auto-expire and have a configurable download limit — no Google login, no email attachment size limits, no forgotten sign-outs.
 
+## Demo
+
+<video src="brag-output/brag.mp4" poster="brag-output/brag.jpg" controls width="100%"></video>
+
+![LabStash launch video — upload from the lab computer, grab a code like ABC-234-XYZ, download it later as a ZIP](brag-output/brag.jpg)
+
 ## How It Works
 
 1. **Upload** — Drop your files into the uploader. Choose an expiry window (5 min to 1 hr) and a download limit (1–25).
