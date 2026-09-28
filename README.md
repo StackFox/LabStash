@@ -6,7 +6,7 @@ LabStash is a temporary file-sharing service designed for computer labs. Upload 
 
 ## Demo
 
-<video src="brag-output/brag.mp4" poster="brag-output/brag.jpg" controls width="100%"></video>
+https://github.com/user-attachments/assets/43630fd4-8e9f-4630-9ee7-81ae55105771
 
 ![LabStash launch video — upload from the lab computer, grab a code like ABC-234-XYZ, download it later as a ZIP](brag-output/brag.jpg)
 
